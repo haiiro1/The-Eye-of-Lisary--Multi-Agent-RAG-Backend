@@ -1,0 +1,15 @@
+# requirements.txt
+fastapi
+uvicorn
+pydantic-settings
+python-dotenv
+langchain
+langchain-community
+langchain-openai
+langchain-google-genai
+chromadb
+langchain-huggingface
+sentence-transformers
+pypdf
+tiktoken
+tavily-python

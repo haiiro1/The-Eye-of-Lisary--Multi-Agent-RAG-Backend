@@ -1,0 +1,28 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+bin/
+include/
+lib/
+share/
+
+# Variables de entorno (Credenciales sensibles)
+.env
+
+# Python (Archivos temporales y de caché)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Datos y Base de Datos Vectorial
+# Ignoramos la base de datos persistente para que no pese en el repo
+data/vector_store/
+# Opcional: Ignorar los manuales si no quieres subirlos por copyright
+data/manuales/*.pdf
+
+# IDEs (VS Code, PyCharm)
+.vscode/
+.idea/
