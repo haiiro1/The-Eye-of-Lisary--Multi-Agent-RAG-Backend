@@ -1,0 +1,81 @@
+2026-03-06 22:32:07,257 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-06 22:32:10,145 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2026-03-06 22:32:10,145 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-03-06 22:32:10,820 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:10,820 - huggingface_hub.utils._http - WARNING - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-03-06 22:32:10,828 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/modules.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:10,991 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:11,006 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:11,165 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:11,173 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:11,341 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:11,348 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/README.md "HTTP/1.1 200 OK"
+2026-03-06 22:32:11,508 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:11,515 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/modules.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:11,676 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:11,682 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:11,843 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-03-06 22:32:12,014 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:12,021 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:12,303 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:12,311 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:12,468 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:12,476 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:12,649 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-03-06 22:32:12,809 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-03-06 22:32:13,045 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 22:32:13,053 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+2026-03-06 22:32:13,219 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+2026-03-06 22:32:13,273 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-06 22:32:18,370 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 00:50:56,726 - fastapi - ERROR - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2026-03-07 01:09:28,890 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:09:32,204 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:10:34,873 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:10:38,131 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:10:38,279 - ddgs.ddgs - INFO - Error in engine grokipedia: DDGSException("ConnectError: ConnectError('error sending request for url (https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=%C2%BFCu%C3%A1l%20es%20mi%20bonificador%20de%20ataque%20con%20el%20rifle%20y%20cu%C3%A1nto%20da%C3%B1o%20hace%3F%205e%20site%3Awikidot.com)', 'https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=%C2%BFCu%C3%A1l%20es%20mi%20bonificador%20de%20ataque%20con%20el%20rifle%20y%20cu%C3%A1nto%20da%C3%B1o%20hace%3F%205e%20site%3Awikidot.com')")
+2026-03-07 01:10:38,367 - primp - INFO - response: https://www.google.com/search?q=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+el+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&filter=1&start=0&hl=wt-WT&lr=lang_wt&cr=countryWT&tbs=qdr%3Ay 200
+2026-03-07 01:10:38,779 - primp - INFO - response: https://grokipedia.com/api/typeahead?query=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+el+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&limit=1 200
+2026-03-07 01:10:39,366 - primp - INFO - response: https://search.yahoo.com/search;_ylt=mckpPJp6zf8jUtSHUFe9UHKy;_ylu=feRCqYCat3DcblgzD-YSOuEqii-WnWotpvKgk3xuspLIoJ4?p=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+el+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&btf=y 200
+2026-03-07 01:10:40,900 - primp - INFO - response: https://www.mojeek.com/search?q=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+el+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com 200
+2026-03-07 01:10:41,544 - primp - INFO - response: https://search.brave.com/search?q=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+el+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&source=web&tf=py 200
+2026-03-07 01:10:43,045 - primp - INFO - response: https://yandex.com/search/site/?text=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+el+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&web=1&searchid=8169996 200
+2026-03-07 01:10:48,544 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:11:41,960 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:11:44,545 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:11:44,558 - ddgs.ddgs - INFO - Error in engine grokipedia: DDGSException("ConnectError: ConnectError('error sending request for url (https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=%C2%BFCu%C3%A1l%20es%20mi%20bonificador%20de%20ataque%20con%20mi%20rifle%20y%20cu%C3%A1nto%20da%C3%B1o%20hace%3F%205e%20site%3Awikidot.com)', 'https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=%C2%BFCu%C3%A1l%20es%20mi%20bonificador%20de%20ataque%20con%20mi%20rifle%20y%20cu%C3%A1nto%20da%C3%B1o%20hace%3F%205e%20site%3Awikidot.com')")
+2026-03-07 01:11:45,045 - primp - INFO - response: https://grokipedia.com/api/typeahead?query=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+mi+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&limit=1 200
+2026-03-07 01:11:45,536 - primp - INFO - response: https://html.duckduckgo.com/html/ 200
+2026-03-07 01:11:49,894 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:12:34,832 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:12:38,332 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:12:38,345 - ddgs.ddgs - INFO - Error in engine grokipedia: DDGSException("ConnectError: ConnectError('error sending request for url (https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=%C2%BFCu%C3%A1l%20es%20mi%20bonificador%20de%20ataque%20con%20mi%20rifle%20y%20cu%C3%A1nto%20da%C3%B1o%20hace%3F%205e%20site%3Awikidot.com)', 'https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=%C2%BFCu%C3%A1l%20es%20mi%20bonificador%20de%20ataque%20con%20mi%20rifle%20y%20cu%C3%A1nto%20da%C3%B1o%20hace%3F%205e%20site%3Awikidot.com')")
+2026-03-07 01:12:38,823 - primp - INFO - response: https://grokipedia.com/api/typeahead?query=%C2%BFCu%C3%A1l+es+mi+bonificador+de+ataque+con+mi+rifle+y+cu%C3%A1nto+da%C3%B1o+hace%3F+5e+site%3Awikidot.com&limit=1 200
+2026-03-07 01:12:39,104 - primp - INFO - response: https://html.duckduckgo.com/html/ 200
+2026-03-07 01:12:43,404 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:16:10,598 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:16:12,784 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:16:12,844 - ddgs.ddgs - INFO - Error in engine grokipedia: DDGSException("ConnectError: ConnectError('error sending request for url (https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=cuanto%20pega%20mi%20rifle%3F%205e%20site%3Adandwiki.com)', 'https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=cuanto%20pega%20mi%20rifle%3F%205e%20site%3Adandwiki.com')")
+2026-03-07 01:16:13,406 - primp - INFO - response: https://grokipedia.com/api/typeahead?query=cuanto+pega+mi+rifle%3F+5e+site%3Adandwiki.com&limit=1 200
+2026-03-07 01:16:13,750 - primp - INFO - response: https://www.mojeek.com/search?q=cuanto+pega+mi+rifle%3F+5e+site%3Adandwiki.com 200
+2026-03-07 01:16:15,119 - primp - INFO - response: https://yandex.com/search/site/?text=cuanto+pega+mi+rifle%3F+5e+site%3Adandwiki.com&web=1&searchid=4420298 200
+2026-03-07 01:16:21,835 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:16:59,412 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:17:03,599 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:21:21,469 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:21:25,195 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:22:03,644 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:22:08,042 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:24:56,333 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:25:01,204 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:27:18,622 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:27:20,164 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:30:02,029 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:30:05,039 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:30:32,910 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:30:44,658 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-07 01:33:16,790 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"

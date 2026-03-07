@@ -1,15 +1,24 @@
-# requirements.txt
+# Servidor y API
 fastapi
 uvicorn
 pydantic-settings
 python-dotenv
+python-multipart
+
+# IA y Modelos
 langchain
 langchain-community
 langchain-openai
 langchain-google-genai
+
+# Base de datos y RAG
 chromadb
 langchain-huggingface
 sentence-transformers
-pypdf
+PyPDF2
 tiktoken
+
+# Herramientas
 tavily-python
+
+ddgs
