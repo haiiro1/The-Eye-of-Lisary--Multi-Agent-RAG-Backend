@@ -8,7 +8,7 @@ def setup_logging():
         level=logging.INFO,
         format=log_format,
         handlers=[
-            logging.StreamHandler(sys.stdout), # Imprimir en consola
+            logging.StreamHandler(sys.stdout),
             logging.FileHandler("data/ojo_de_lisary.log") # Guardar en archivo
         ]
     )

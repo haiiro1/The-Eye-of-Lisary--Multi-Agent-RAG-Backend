@@ -8,23 +8,20 @@ class WebOmniExpert(BaseDnDAgent):
         return WikiTool()
 
     def run(self, user_input: str, language: str = "es") -> dict:
-        # Buscamos en todo el ecosistema web de D&D
+        # Buscamos en ambos sitios simultáneamente usando tu WikiTool
         web_results = self.tools.search_all_dnd(user_input)
 
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el Gran Cronista de la Red del Ojo de Lisary.
-             Tu misión es filtrar la información de la web (Wikidot y Dandwiki).
+            ("system", """Eres el Cronista Omnisciente de la Red.
+             Tu trabajo es filtrar y organizar información externa de D&D 5e.
 
-             PROTOCOLOS DE RESPUESTA:
-             1. IDIOMA: Responde en {lang}.
-             2. DISTINCIÓN DE FUENTES:
-                - Si la info viene de WIKIDOT, márcala como 'CONTENIDO OFICIAL (Expansiones)'.
-                - Si la info viene de DANDWIKI, márcala como 'CONTENIDO HOMEBREW (No Oficial)'.
-             3. TRADUCCIÓN: Mantén términos técnicos en inglés entre paréntesis: 'Puntos de Golpe (Hit Points)'.
-             4. ADVERTENCIA: Si usas Homebrew, advierte sobre el balanceo del juego.
-             5. SÍNTESIS: Si encuentras la misma dote o clase en ambos sitios, explica las diferencias."""),
+             REGLAS DE FILTRADO:
+             1. CLASIFICACIÓN: Identifica claramente si la fuente es 'WIKIDOT' (Contenido Oficial/Expansiones) o 'DANDWIKI' (Homebrew/Fan-made).
+             2. ADVERTENCIA HOMEBREW: Si presentas datos de Dandwiki, añade siempre una nota sobre el posible desbalanceo mecánico.
+             3. IDIOMA: Responde en {lang}.
+             4. COMPARACIÓN: Si el usuario pregunta por algo que existe en ambas fuentes, destaca las diferencias."""),
             MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "RESULTADOS DE BÚSQUEDA WEB:\n{context}\n\nPREGUNTA DEL JUGADOR: {question}")
+            ("human", "RESULTADOS DE BÚSQUEDA:\n{context}\n\nPREGUNTA: {question}")
         ])
 
         chain = prompt | self.llm | StrOutputParser()

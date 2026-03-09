@@ -1,6 +1,5 @@
 import os
 from langchain_huggingface import HuggingFaceEmbeddings
-# CAMBIO AQUÍ: Importamos desde langchain_chroma en lugar de langchain_community
 from langchain_chroma import Chroma
 from src.core.config import settings
 
