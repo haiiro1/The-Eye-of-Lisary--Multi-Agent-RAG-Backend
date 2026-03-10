@@ -1,22 +1,14 @@
 from abc import ABC, abstractmethod
 from src.core.factory import LLMFactory
 from src.core.memory import get_chat_history
-from typing import Any, Optional, List
+from typing import Any, Optional
 
 class BaseDnDAgent(ABC):
-    def __init__(self, session_id: str, chat_history: Optional[List] = None):
+    def __init__(self, session_id: str):
         self.session_id = session_id
-        # El modelo de razonamiento sigue siendo el estándar para expertos
+        # Los especialistas usan el modelo de razonamiento por defecto
         self.llm = LLMFactory.get_model(is_reasoning=True)
-
-        # Si LangGraph nos pasa el historial del estado, lo usamos.
-        # Si no, recurrimos a la persistencia clásica de SQL.
-        if chat_history is not None:
-            self.memory_messages = chat_history
-        else:
-            self.memory = get_chat_history(session_id)
-            self.memory_messages = self.memory.messages
-
+        self.memory = get_chat_history(session_id)
         self.tools = self._setup_tools()
 
     @abstractmethod
@@ -25,9 +17,6 @@ class BaseDnDAgent(ABC):
         pass
 
     @abstractmethod
-    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
-        """
-        Ejecuta la lógica principal del agente.
-        Añadimos 'extra_info' para recibir contexto de otros nodos del grafo.
-        """
+    def run(self, user_input: str, language: str = "es") -> dict:
+        """Ejecuta la lógica principal del agente. Devuelve un dict con la respuesta."""
         pass

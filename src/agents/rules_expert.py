@@ -1,47 +1,59 @@
 from src.core.base_agent import BaseDnDAgent
 from src.tools.rag_tool import RAGTool
-from src.tools.ConditionExpertTool import ConditionExpertTool
-from src.tools.CombatCalculatorTool import CombatCalculatorTool
-from src.tools.DiceRollerTool import DiceRollerTool
-# ELIMINADO: Ya no importa ni instancia otros agentes directamente
+from src.agents.spell_mentor import SpellMentor
+from src.agents.web_omni_expert import WebOmniExpert
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from src.core.logging_config import logger
 
 class RulesExpert(BaseDnDAgent):
     def _setup_tools(self):
-        # Ahora el experto solo se encarga de los manuales oficiales mediante RAG
+        # Unificamos: El experto en reglas usa RAG para lo local y WebOmni para lo externo
         return {
             "rag": RAGTool(k=4),
-            "conditions": ConditionExpertTool(),
-            "calculator": CombatCalculatorTool(),
-            "dice": DiceRollerTool(),
+            "web_omni": WebOmniExpert(session_id=self.session_id),
+            "spells": SpellMentor(session_id=self.session_id),
         }
 
-    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
-        logger.info(f"⚖️ [RulesExpert] Resolviendo duda reglamentaria en modo nodo...")
+    def run(self, user_input: str, language: str = "es") -> dict:
+        logger.info(f"⚖️ [RulesExpert] Resolviendo duda reglamentaria con apoyo unificado...")
 
         # 1. Obtener contexto de los manuales locales (RAG)
         context_rag = self.tools["rag"].search(user_input)
 
-        # 2. El Prompt Maestro (Agnóstico y Profesional)
-        # Se mantiene la capacidad de recibir 'extra_info' desde el grafo si otros nodos aportaron algo
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el Juez Supremo de Reglas.
+        # 2. Apoyo dinámico de Magia o Web a través de Agentes Especializados
+        extra_info = ""
+        input_lower = user_input.lower()
 
-             PROTOCOLOS DE JUICIO:
-             1. ESTADOS: Si la duda es sobre condiciones (Cegado, Apresado, etc.), usa la lógica de tu herramienta de CONDICIONES.
-             2. MATEMÁTICAS: Para CA, CD de salvación o bonos de ataque, utiliza tu CALCULADORA de combate. No inventes números.
-             3. AZAR: Si el jugador pide una tirada, usa tu herramienta de DADOS.
-             4. RAW: Prioriza los MANUALES (RAG) para reglas generales.
-             5. Responde con autoridad técnica en {lang}, usando negritas para términos mecánicos."""),
+        # Si la duda es sobre hechizos, delegamos al SpellMentor
+        if any(w in input_lower for w in ["hechizo", "spell", "magia", "lanzar", "concentración"]):
+            spell_res = self.tools["spells"].run(user_input, language=language)
+            extra_info += f"\n[ACLARACIÓN MÁGICA]: {spell_res['answer']}"
+
+        # CORRECCIÓN: Si la duda requiere internet, delegamos al WebOmniExpert
+        # Ya no usamos WikiTool directamente, usamos el agente unificado.
+        keywords_web = ["wikidot", "dandwiki", "oficial", "errata", "sage advice", "homebrew"]
+        if any(w in input_lower for w in keywords_web):
+            logger.info(f"🌐 [RulesExpert] Delegando búsqueda externa al WebOmniExpert...")
+            web_res = self.tools["web_omni"].run(user_input, language=language)
+            extra_info += f"\n[INFO EXTERNA (Web)]: {web_res['answer']}"
+
+        # 3. El Prompt Maestro (Agnóstico y Profesional)
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """Eres el Juez Supremo de Reglas del Ojo de Lisary.
+             Tu misión es resolver dudas sobre mecánicas de D&D 5e de forma imparcial y técnica.
+
+             DIRECTRICES DE JUICIO:
+             1. RAW (Reglas Escritas): Prioriza siempre los MANUALES locales.
+             2. RAI (Reglas según Intención): Usa la INFO EXTERNA o ACLARACIÓN MÁGICA para interpretar ambigüedades.
+             3. IDIOMA: Responde con autoridad en {lang}.
+             4. FORMATO: Usa negritas para términos mecánicos (**Acción**, **Salvación**, **Ventaja**).
+             5. AGNOSTICISMO: Tu respuesta debe ser válida para cualquier mesa de juego."""),
             MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "CONTEXTO REGLAMENTARIO:\n{context}\n\nINFO EXTRA:\n{extra_info}\n\nPREGUNTA: {question}")
+            ("human", "CONTEXTO REGLAMENTARIO:\n{context}\n{extra_info}\n\nPREGUNTA DEL JUGADOR: {question}")
         ])
 
         chain = prompt | self.llm | StrOutputParser()
-
-        # Invocamos la cadena. La memoria ahora se gestiona de forma externa o mediante el estado del grafo.
         answer = chain.invoke({
             "context": context_rag,
             "extra_info": extra_info,
@@ -50,5 +62,7 @@ class RulesExpert(BaseDnDAgent):
             "chat_history": self.memory.messages
         })
 
-        # Nota: En LangGraph, podrías elegir no añadir los mensajes aquí y dejar que el Grafo lo haga.
+        self.memory.add_user_message(user_input)
+        self.memory.add_ai_message(answer)
+
         return {"agent": "RulesExpert", "answer": answer}

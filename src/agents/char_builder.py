@@ -1,7 +1,7 @@
 from src.core.base_agent import BaseDnDAgent
 from src.tools.rag_tool import RAGTool
-from src.tools.CombatCalculatorTool import CombatCalculatorTool
-from src.tools.sheet_manager import SheetManager
+from src.agents.spell_mentor import SpellMentor
+from src.agents.web_omni_expert import WebOmniExpert
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from src.core.logging_config import logger
@@ -9,41 +9,63 @@ from src.core.logging_config import logger
 class CharBuilder(BaseDnDAgent):
     def _setup_tools(self):
         return {
-            "rag": RAGTool(k=3),# 3 chunks, fragmentos más parecidos para tener un contexto amplio sin saturar
-            "sheet": SheetManager(),
-            "calculator": CombatCalculatorTool()
+            "web_omni": WebOmniExpert(session_id=self.session_id),
+            "rag": RAGTool(k=3),
+            "spells": SpellMentor(session_id=self.session_id)
         }
 
-    def run(self, user_input: str, language: str = "es", extra_context: str = "") -> dict:
-        logger.info(f"🏗️ [CharBuilder] Optimizando personaje en modo nodo...")
+    def run(self, user_input: str, language: str = "es") -> dict:
+        logger.info(f"🏗️ [CharBuilder] Iniciando optimización de personaje con equipo unificado...")
 
-        # 1. Búsqueda en manuales locales
+        # 1. Búsqueda de Reglas Generales (Manuales Locales)
         official_context = self.tools["rag"].search(user_input)
 
-        # 2. Prompt Maestro (Adaptado para recibir contexto extra del grafo)
+        # 2. Apoyo de Expertos (Delegación)
+        spell_advice = ""
+        external_info = ""
+        input_lower = user_input.lower()
+
+        # Lógica para Magia: Delegamos al SpellMentor
+        magic_keywords = ["hechizo", "spell", "magia", "lanzar", "slot", "conjuro", "cantrip"]
+        if any(word in input_lower for word in magic_keywords):
+            logger.info("🔮 [CharBuilder] Consultando al SpellMentor...")
+            spell_res = self.tools["spells"].run(user_input, language=language)
+            spell_advice = f"\n[CONSEJO MÁGICO]: {spell_res['answer']}"
+
+        # Lógica para Contenido Externo: Delegamos al WebOmniExpert
+        web_keywords = ["dandwiki", "homebrew", "wikidot", "oficial", "extra", "internet"]
+        if any(word in input_lower for word in web_keywords):
+            logger.info("🌐 [CharBuilder] Delegando búsqueda externa al WebOmniExpert...")
+            web_res = self.tools["web_omni"].run(user_input, language=language)
+            external_info = f"\n[INFO EXTERNA (Web)]: {web_res['answer']}"
+
+        # 3. Prompt Maestro Universal
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el Arquitecto de Almas, experto en creación y optimización para D&D 5e.
+            ("system", """Eres el Arquitecto de Almas, experto en la creación y optimización de personajes para D&D 5e.
 
-             PILARES:
-             1. REGLAS OFICIALES: Usa el contexto de manuales (RAG).
-             2. BALANCE: Mantén la coherencia técnica.
-             3. IDIOMA: Responde en {lang}.
+             TUS PILARES DE CONSTRUCCIÓN:
+             1. REGLAS OFICIALES: Valida dotes y rasgos usando el contexto de los manuales (RAG).
+             2. INTEGRACIÓN WEB: Utiliza la INFO EXTERNA (Web) para añadir opciones de Wikidot o Dandwiki, manteniendo siempre el balance.
+             3. OPTIMIZACIÓN MÁGICA: Incorpora el CONSEJO MÁGICO si el personaje es un lanzador de conjuros.
+             4. HISTORIAL: Revisa la memoria de la sesión para mantener la coherencia con decisiones previas.
 
-             Si el contexto extra contiene consejos de otros expertos, intégralos de forma fluida."""),
+             Responde de forma técnica y motivadora en {lang}. Sirve para cualquier clase o nivel."""),
             MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "DATOS LOCALES:\n{context}\n\nINFORMACIÓN EXTRA:\n{extra_info}\n\nSOLICITUD: {question}")
+            ("human", "DATOS TÉCNICOS:\n{context}\n{spell_info}\n{web_info}\n\nSOLICITUD: {question}")
         ])
 
         chain = prompt | self.llm | StrOutputParser()
 
-        # El historial de mensajes se maneja ahora por LangGraph en el estado
         answer = chain.invoke({
             "context": official_context,
-            "extra_info": extra_context,
+            "spell_info": spell_advice,
+            "web_info": external_info,
             "question": user_input,
             "lang": language,
             "chat_history": self.memory.messages
         })
 
-        # Nota: La persistencia en memoria ahora la puede gestionar LangGraph automáticamente
+        self.memory.add_user_message(user_input)
+        self.memory.add_ai_message(answer)
+
         return {"agent": "CharBuilder", "answer": answer}

@@ -21,8 +21,5 @@ class Settings(BaseSettings):
         env_file=str(Path(__file__).resolve().parent.parent.parent / ".env"),
         extra="ignore"
     )
-    # --- PERSISTENCIA ---
-    # Ruta para la base de datos de hilos de LangGraph
-    DB_PATH: str = str(BASE_DIR / "data" / "chat_history.db")
 
 settings = Settings()

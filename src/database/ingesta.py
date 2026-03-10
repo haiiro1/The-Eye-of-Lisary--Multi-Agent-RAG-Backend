@@ -1,58 +1,44 @@
 import os
-import shutil
-import fitz  # PyMuPDF
+import sys
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 from src.database.vector_engine import VectorEngine
 from src.core.config import settings
-import fitz  # PyMuPDF
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 
 def procesar_manuales():
-    # 1. ELIMINACIÓN MANUAL (DEBES HACERLO ANTES DE CORRER EL SCRIPT)
-    # Borra la carpeta data/vector_store manualmente para limpiar las 5000 letras.
-
+    # 1. Obtener la conexión a ChromaDB
     vector_store = VectorEngine.get_vector_store()
 
-    # Configuramos el splitter con valores SEGUROS
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
-        separators=["\n\n", "\n", ". ", " "] # Jamás permitimos "" como separador aquí
-    )
+    #2.Tamaño de los chunks y solapamiento para la división de texto
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
-    archivos_pdf = [f for f in os.listdir(settings.MANUALS_PATH) if f.endswith('.pdf')]
+    # Validar si la carpeta de manuales existe
+    if not os.path.exists(settings.MANUALS_PATH):
+        print(f"❌ Error: No existe la carpeta {settings.MANUALS_PATH}")
+        return
 
-    for archivo in archivos_pdf:
-        path = os.path.join(settings.MANUALS_PATH, archivo)
+    print(f"🔍 Buscando manuales en: {settings.MANUALS_PATH}...")
+    archivos_encontrados = [f for f in os.listdir(settings.MANUALS_PATH) if f.endswith(".pdf")]
 
-        # --- EXTRACCIÓN ROBUSTA ---
-        texto_unificado = ""
-        with fitz.open(path) as doc:
-            for pagina in doc:
-                # Extraemos el texto y nos aseguramos de que sea un STRING plano
-                texto_unificado += str(pagina.get_text("text")) + " "
+    if not archivos_encontrados:
+        print("⚠️ No se encontraron archivos PDF para procesar.")
+        return
 
-        # LIMPIEZA DE CARACTERES NULOS
-        texto_unificado = texto_unificado.replace('\x00', '').strip()
+    # 3. Procesar cada archivo
+    for archivo in archivos_encontrados:
+        path_completo = os.path.join(settings.MANUALS_PATH, archivo)
+        print(f"📖 Procesando: {archivo}...")
 
-        print(f"📏 Caracteres totales en {archivo}: {len(texto_unificado)}")
+        try:
+            loader = PyPDFLoader(path_completo)
+            # Cargamos y dividimos el PDF en trozos
+            paginas = loader.load_and_split(text_splitter)
 
-        # --- CORTE SEGURO ---
-        # Usamos split_text sobre el string gigante
-        fragmentos_de_texto = text_splitter.split_text(texto_unificado)
+            # 4. Inyectar en la base de datos
+            vector_store.add_documents(paginas)
+            print(f"✅ {archivo} indexado correctamente ({len(paginas)} trozos).")
+        except Exception as e:
+            print(f"❌ Error procesando {archivo}: {e}")
 
-        print(f"📦 Fragmentos generados: {len(fragmentos_de_texto)}")
-
-        # Convertimos a documentos reales para Chroma
-        docs_finales = [
-            Document(page_content=txt, metadata={"source": archivo}) 
-            for txt in fragmentos_de_texto if len(txt) > 50 # Ignoramos basura
-        ]
-
-        if docs_finales:
-            vector_store.add_documents(docs_finales)
-            print(f"✅ {archivo} indexado correctamente.")
 if __name__ == "__main__":
     procesar_manuales()

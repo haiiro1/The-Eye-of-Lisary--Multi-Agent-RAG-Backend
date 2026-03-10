@@ -1,64 +1,55 @@
 from src.core.base_agent import BaseDnDAgent
 from src.tools.rag_tool import RAGTool
-from src.tools.ConditionExpertTool import ConditionExpertTool
-from src.tools.CombatCalculatorTool import CombatCalculatorTool
-# ELIMINADO: Ya no importa ni instancia WebOmniExpert directamente
+from src.agents.web_omni_expert import WebOmniExpert
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from src.core.logging_config import logger
 
 class SpellMentor(BaseDnDAgent):
     def _setup_tools(self):
-        # El mentor ahora se centra exclusivamente en el conocimiento de manuales locales
+        # El mentor usa RAG para manuales locales y delega al WebOmni para lo externo
         return {
             "rag": RAGTool(k=3),
-            "conditions": ConditionExpertTool(),
-            "calculator": CombatCalculatorTool()
+            "web_omni": WebOmniExpert(session_id=self.session_id)
         }
 
-    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
-        logger.info(f"🧙‍♂️ [SpellMentor] Analizando conocimientos arcanos en modo nodo...")
+    def run(self, user_input: str, language: str = "es") -> dict:
+        logger.info(f"🧙‍♂️ [SpellMentor] Analizando conocimientos arcanos...")
 
         # 1. Buscamos en los manuales locales (RAG)
         context = self.tools["rag"].search(user_input)
+        # 2. Apoyo dinámico del WebOmniExpert si no hay info local suficiente
+        # O si se menciona explícitamente contenido de expansiones/web
+        extra_web_info = ""
+        if len(context) < 200 or any(w in user_input.lower() for w in ["wikidot", "dandwiki", "homebrew", "tasha", "xanathar"]):
+            logger.info("🌐 [SpellMentor] Consultando al WebOmniExpert para ampliar el libro de conjuros...")
+            web_res = self.tools["web_omni"].run(user_input, language=language)
+            extra_web_info = f"\n[CONOCIMIENTO DE GRIMORIOS EXTERNOS]: {web_res['answer']}"
 
-        # 2. Prompt Maestro Arcano
-        # El parámetro extra_info permite recibir conocimiento web procesado previamente por el grafo
+        # 3. Prompt Maestro Arcano
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el Mentor de Hechizos del Ojo de Lisary, una autoridad absoluta en artes arcanas y divinas.
-            Tu misión es explicar la magia de D&D 5e con máxima precisión técnica.
+            ("system", """Eres el Mentor de Hechizos del Ojo de Lisary, una autoridad en artes arcanas y divinas.
+             Tu misión es explicar la magia de D&D 5e con precisión técnica y visión estratégica.
 
-            PROTOCOLOS DE ENSEÑANZA:
-            1. VERACIDAD RAG: Tus respuestas deben basarse ESTRICTAMENTE en el 'CONOCIMIENTO LOCAL (RAG)'. Si un dato (como Componentes M) no aparece en el RAG, di "No especificado en mis archivos" en lugar de inventarlo.
-            2. FICHA TÉCNICA: Indica siempre Nivel, Tiempo de lanzamiento, Alcance (y área de efecto exacta), Componentes y Duración.
-            3. ÁREA DE EFECTO: Sé extremadamente preciso. Diferencia entre Esfera, Cono, Línea o Cilindro según el manual.
-            4. CONCENTRACIÓN: Si el hechizo la requiere, márcalo en negrita al inicio.
-            5. IDIOMA: Responde en {lang}. Usa el nombre en inglés entre paréntesis si es distinto.
-            6. ESTRATEGIA: Sugiere usos tácticos basados en las reglas, pero nunca inventes mecánicas o bonos numéricos que no existan en el sistema D&D 5e."""),
-
+             PROTOCOLOS DE ENSEÑANZA:
+             1. FICHA TÉCNICA: Indica siempre Tiempo de lanzamiento, Alcance, Componentes (V, S, M) y Duración.
+             2. CONCENTRACIÓN: Si el hechizo la requiere, advierte claramente sobre los riesgos de perderla y cómo afecta a otros hechizos activos.
+             3. IDIOMA: Responde en {lang}. Si el nombre original es inglés, úsalo entre paréntesis: 'Paso Misterioso (Misty Step)'.
+             4. ESTRATEGIA: Sugiere combinaciones con otros rasgos o hechizos si el historial de chat muestra que el personaje tiene sinergias.
+             5. AGNOSTICISMO: Sirve a cualquier lanzador de conjuros, adaptando tu consejo a su nivel y clase detectados."""),
             MessagesPlaceholder(variable_name="chat_history"),
-
-            ("human", """CONOCIMIENTO LOCAL (RAG):
-            {context}
-
-            CONOCIMIENTO EXTERNO (Ficha de personaje):
-            {extra_info}
-
-            PREGUNTA SOBRE MAGIA: {question}
-
-            Instrucción final: Sé fiel al texto de los manuales. Si el RAG dice que una Bola de Fuego es una ESFERA, no digas que es un cono.""")
+            ("human", "CONOCIMIENTO LOCAL (RAG):\n{context}\n{extra_info}\n\nPREGUNTA SOBRE MAGIA: {question}")
         ])
 
         chain = prompt | self.llm | StrOutputParser()
-
-        # La invocación ahora es limpia y depende del estado que le pase el grafo
         answer = chain.invoke({
             "context": context,
-            "extra_info": extra_info,
+            "extra_info": extra_web_info,
             "question": user_input,
             "lang": language,
             "chat_history": self.memory.messages
         })
 
-        # Retornamos el formato esperado por el nodo de LangGraph
+        self.memory.add_user_message(user_input)
+        self.memory.add_ai_message(answer)
         return {"agent": "SpellMentor", "answer": answer}
