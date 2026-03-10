@@ -26,3 +26,9 @@ data/manuales/*.pdf
 # IDEs (VS Code, PyCharm)
 .vscode/
 .idea/
+data/ojo_de_lisary.log
+data/chat_history.db-wal
+data/chat_history.db-shm
+data/ojo_de_lisary.log
+data/ojo_de_lisary.log
+data/ojo_de_lisary.log
