@@ -22,3 +22,11 @@ tiktoken
 tavily-python
 
 ddgs
+
+#langgraph
+langgraph
+langchain-core
+langgraph.checkpoint.sqlite
+
+# ui simple
+streamlit

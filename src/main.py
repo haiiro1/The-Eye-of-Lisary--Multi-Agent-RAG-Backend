@@ -1,21 +1,27 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
-from src.agents.router import DnDRouter
 import uvicorn
 import PyPDF2
 import io
+import os
 from src.core.logging_config import logger
+# Importamos el grafo desde su ubicación original
+from src.agents.graph import app_graph
+
+# Aseguramos que existan las carpetas de datos al iniciar
+os.makedirs("data/manuales", exist_ok=True)
+os.makedirs("data/vector_store", exist_ok=True)
+
+# EXPOSICIÓN PARA GUI_TEST: Creamos un alias llamado 'graph'
+# para que coincida con lo que busca tu script de Streamlit
+graph = app_graph
 
 app = FastAPI(
-    title="The Eye of Lisary API",
-    version="1.2.0",
-    description="Backend multiagente RAG para D&D 5e con soporte para fichas PDF."
+    title="The Eye of Lisary API - LangGraph Edition",
+    version="2.0.0",
+    description="Backend multi-agente RAG para D&D 5e orquestado con LangGraph."
 )
 
-# Instanciamos el Router globalmente para mantener los agentes calientes en memoria
-router_principal = DnDRouter()
-
-# Almacén de fichas (En una fase posterior, esto debería ser Redis o una DB)
 fichas_personajes = {}
 
 class ChatRequest(BaseModel):
@@ -26,16 +32,43 @@ class ChatRequest(BaseModel):
 async def root():
     return {
         "status": "Online",
-        "artifact": "Ojo de Lisary",
-        "message": "Listo para procesar manuales, hechizos y fichas de héroes."
+        "system": "The Eye of Lisary",
+        "engine": "LangGraph + Fireworks AI"
     }
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    try:
+        contexto_ficha = fichas_personajes.get(request.session_id, "No hay ficha cargada.")
+
+        # Estado inicial alineado con tu AgentState
+        initial_state = {
+            "messages": [("human", request.message)],
+            "sheet_context": contexto_ficha,
+            "language": "es",
+            "next_step": ""
+        }
+
+        config = {"configurable": {"thread_id": request.session_id}}
+
+        # Invocamos el grafo usando el objeto importado
+        final_state = app_graph.invoke(initial_state, config)
+
+        # Obtenemos el contenido del último mensaje (la respuesta del agente)
+        last_message = final_state["messages"][-1]
+
+        return {
+            "agent_used": final_state.get("next_step", "Finalizer"),
+            "response": last_message.content if hasattr(last_message, 'content') else str(last_message),
+            "session_id": request.session_id
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error en el flujo de LangGraph: {e}")
+        raise HTTPException(status_code=500, detail="Error interno en el orquestador.")
 
 @app.post("/upload_sheet/{session_id}")
 async def upload_sheet(session_id: str, file: UploadFile = File(...)):
-    """
-    Carga y procesa la ficha PDF del personaje.
-    Extrae el texto para que el SheetExpert pueda analizarlo.
-    """
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se admiten archivos PDF.")
 
@@ -50,48 +83,15 @@ async def upload_sheet(session_id: str, file: UploadFile = File(...)):
                 text_content += page_text + "\n"
 
         if not text_content.strip():
-            raise ValueError("El PDF parece estar vacío o ser una imagen (no contiene texto seleccionable).")
+            raise ValueError("El PDF no contiene texto extraíble.")
 
-        # Guardamos el texto extraído asociado a la sesión
         fichas_personajes[session_id] = text_content
+        logger.info(f"📄 Ficha vinculada a sesión: {session_id}")
 
-        logger.info(f"📄 Ficha procesada para la sesión: {session_id}.")
-        return {
-            "status": "success",
-            "session_id": session_id,
-            "message": "Ficha vinculada correctamente.",
-            "characters_stats_detected": len(text_content)
-        }
+        return {"status": "success", "message": "Ficha vinculada correctamente."}
     except Exception as e:
-        logger.error(f"❌ Error al procesar PDF en sesión {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
-@app.post("/chat")
-async def chat(request: ChatRequest):
-    """
-    Endpoint principal de conversación.
-    Recupera el contexto de la ficha y delega la lógica al Router.
-    """
-    try:
-        # Recuperamos el contexto de la ficha o indicamos su ausencia
-        contexto_ficha = fichas_personajes.get(request.session_id, "No hay ficha cargada.")
-
-        # El Router se encarga de la orquestación multia-agente
-        data = router_principal.route(
-            user_input=request.message,
-            session_id=request.session_id,
-            sheet_context=contexto_ficha
-        )
-
-        return {
-            "agent_used": data["agent"],
-            "response": data["answer"],
-            "session_id": request.session_id
-        }
-    except Exception as e:
-        logger.error(f"❌ Error en el flujo de chat: {e}")
-        raise HTTPException(status_code=500, detail="El Ojo ha tenido un problema interno. Revisa los logs.")
+        logger.error(f"❌ Error procesando PDF: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    # Configuración de inicio para desarrollo
     uvicorn.run(app, host="0.0.0.0", port=8000)
