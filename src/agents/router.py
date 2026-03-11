@@ -26,6 +26,8 @@ class DnDRouter:
             Entrada: {input}
         """)
 
+#
+
         raw_decision = (prompt | self.llm | StrOutputParser()).invoke({"input": user_input}).strip().upper()
 
         # Forzamos la redirección a WEB para SPELLS y RULES por ahora

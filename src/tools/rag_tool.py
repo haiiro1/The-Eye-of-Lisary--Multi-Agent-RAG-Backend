@@ -15,7 +15,7 @@ class RAGTool:
         """
         try:
             logger.info(f"🔍 [RAGTool] Consultando manuales por: '{query}'")
-            
+
             # Realizamos la búsqueda de similitud simple (sin filtros para evitar errores de llave)
             docs = self.vector_store.similarity_search(query, k=self.k)
 
@@ -28,7 +28,7 @@ class RAGTool:
                 return "Error: La base de datos de manuales está corrupta (fragmentos de 1 caracter)."
 
             return self._format_results(docs)
-            
+
         except Exception as e:
             logger.error(f"❌ [RAGTool] Error en la búsqueda: {e}")
             return f"Error técnico al consultar los manuales: {e}"
@@ -40,10 +40,10 @@ class RAGTool:
             # Usamos .get("source") para que coincida con lo que pusimos en ingesta.py
             source = doc.metadata.get("source", "Manual de D&D")
             page = doc.metadata.get("page", "?")
-            
+
             # Limpiamos el contenido por si acaso trae saltos de línea extraños
             content = doc.page_content.strip()
-            
+
             block = f"--- FUENTE {i} [{source} - Pág. {page}] ---\n{content}"
             formatted_parts.append(block)
 
