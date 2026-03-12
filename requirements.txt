@@ -31,3 +31,5 @@ langgraph.checkpoint.sqlite
 
 # ui simple
 streamlit
+
+aiosqlite
