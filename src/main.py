@@ -1,82 +1,105 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 import uvicorn
 import PyPDF2
 import io
 import os
-from src.core.logging_config import logger
-# Importamos el grafo desde su ubicación original
-from src.agents.graph import app_graph
 
-# Aseguramos que existan las carpetas de datos al iniciar
+from src.core.logging_config import logger
+from src.core.memory import get_graph_checkpointer
+from src.agents.graph import workflow
+
+# --- CONFIGURACIÓN DE DIRECTORIOS ---
 os.makedirs("data/manuales", exist_ok=True)
 os.makedirs("data/vector_store", exist_ok=True)
 
-# EXPOSICIÓN PARA GUI_TEST: Creamos un alias llamado 'graph'
-# para que coincida con lo que busca tu script de Streamlit
-graph = app_graph
+# Variables globales para el motor
+app_graph = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gestiona el ciclo de vida del checkpointer y el grafo."""
+    global app_graph
+    checkpointer = get_graph_checkpointer()
+
+    # Conectamos el saver asíncrono (aiosqlite)
+    async with checkpointer as saver:
+        # Compilamos el grafo con la conexión activa
+        app_graph = workflow.compile(checkpointer=saver)
+        logger.info("✅ El Ojo de Lisary ha despertado con Lifespan y AsyncCheckpointer.")
+        yield
+        # La conexión se cierra automáticamente al salir del bloque 'async with'
 
 app = FastAPI(
-    title="The Eye of Lisary API - LangGraph Edition",
+    title="The Eye of Lisary API",
     version="2.0.0",
-    description="Backend multi-agente RAG para D&D 5e orquestado con LangGraph."
+    description="Backend multi-agente RAG para D&D 5e orquestado con LangGraph.",
+    lifespan=lifespan
 )
 
+# Almacenamiento temporal en memoria para las fichas (en producción usar DB/Redis)
 fichas_personajes = {}
 
 class ChatRequest(BaseModel):
     message: str
     session_id: str
 
+# --- ENDPOINTS ---
+
 @app.get("/")
 async def root():
     return {
         "status": "Online",
         "system": "The Eye of Lisary",
-        "engine": "LangGraph + Fireworks AI"
+        "engine": "LangGraph + Asynchronous Persistence"
     }
 
 @app.get("/health")
 async def health_check():
     return {
         "status": "Healthy",
-        "message": "The Eye of Lisary API is running smoothly."
+        "graph_initialized": app_graph is not None
     }
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    if not app_graph:
+        raise HTTPException(status_code=503, detail="Motor no inicializado.")
+
     try:
+        # Recuperamos el contexto de la ficha si existe
         contexto_ficha = fichas_personajes.get(request.session_id, "No hay ficha cargada.")
 
-        # Estado inicial alineado con tu AgentState
         initial_state = {
             "messages": [("human", request.message)],
             "sheet_context": contexto_ficha,
             "language": "es",
-            "next_step": ""
+            "selected_agents": []  # Lista para la orquestación secuencial
         }
 
         config = {"configurable": {"thread_id": request.session_id}}
 
-        # Invocamos el grafo usando el objeto importado
-        final_state = app_graph.invoke(initial_state, config)
+        # Invocación asíncrona (obligatoria para AsyncSqliteSaver)
+        final_state = await app_graph.ainvoke(initial_state, config)
 
-        # Obtenemos el contenido del último mensaje (la respuesta del agente)
+        # Extraemos el contenido del último mensaje (respuesta del Agregador)
         last_message = final_state["messages"][-1]
+        response_content = last_message.content if hasattr(last_message, 'content') else str(last_message)
 
         return {
-            "agent_used": final_state.get("next_step", "Finalizer"),
-            "response": last_message.content if hasattr(last_message, 'content') else str(last_message),
-            "session_id": request.session_id
+            "response": response_content,
+            "session_id": request.session_id,
+            "agents_involved": final_state.get("selected_agents", []) # Para debug
         }
-
     except Exception as e:
-        logger.error(f"❌ Error en el flujo de LangGraph: {e}")
-        raise HTTPException(status_code=500, detail="Error interno en el orquestador.")
+        logger.error(f"❌ Error en el flujo: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload_sheet/{session_id}")
 async def upload_sheet(session_id: str, file: UploadFile = File(...)):
-    if not file.filename.endswith('.pdf'):
+    """Procesa un PDF de ficha de personaje y lo vincula a la sesión."""
+    if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se admiten archivos PDF.")
 
     try:
