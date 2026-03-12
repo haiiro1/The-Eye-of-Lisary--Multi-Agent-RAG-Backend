@@ -497,3 +497,27 @@ During task with name 'web' and id '80869550-87b6-e832-ee2e-9497fd4b4b08'
 2026-03-10 15:20:31,925 - primp - INFO - response: https://search.yahoo.com/search;_ylt=_e-boJ_a__iH3-gDdxrXGLag;_ylu=WsSCC_Q6i9xHjEOtbX_jSiHzAYsUL1aay-TDQQGWQ8Mpvxk?p=Reglas+oficiales+D%26D+5e%3A+a+5e+dnd+%28site%3Awikidot.com+OR+site%3Adandwiki.com%29&btf=y 200
 2026-03-10 15:20:32,337 - OjoDeLisary - ERROR - ❌ Error en búsqueda web: ConnectError: ConnectError('error sending request for url (https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=Reglas%20oficiales%20D%26D%205e%3A%20a%205e%20dnd%20%28site%3Awikidot.com%20OR%20site%3Adandwiki.com%29)', 'https://wt.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=1&search=Reglas%20oficiales%20D%26D%205e%3A%20a%205e%20dnd%20%28site%3Awikidot.com%20OR%20site%3Adandwiki.com%29')
 2026-03-10 15:20:35,358 - httpx - INFO - HTTP Request: POST https://api.fireworks.ai/inference/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-12 02:29:54,005 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:02,172 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:07,733 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:13,348 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:19,228 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:25,993 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:34,441 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:30:46,093 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:31:04,266 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:31:35,031 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:32:31,466 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:33:36,519 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:34:41,857 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:35:47,389 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:36:52,738 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:37:58,053 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:39:03,355 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:40:08,651 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:41:13,912 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:42:19,697 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:43:29,470 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 02:44:38,784 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 03:02:49,718 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-12 17:11:56,105 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.

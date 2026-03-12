@@ -36,6 +36,13 @@ async def root():
         "engine": "LangGraph + Fireworks AI"
     }
 
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "Healthy",
+        "message": "The Eye of Lisary API is running smoothly."
+    }
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:

@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      # El contexto indica que los archivos (src, requirements.txt) están un nivel arriba
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: eye-of-lisary-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    volumes:
+      # Mapeo de persistencia de datos y manuales desde la raíz
+      - ../data/manuales:/app/data/manuales
+      - ../data/vector_store:/app/data/vector_store
+      - ../data/chat_history.db:/app/data/chat_history.db
+      - ../data/ojo_de_lisary.log:/app/data/ojo_de_lisary.log
+    restart: unless-stopped

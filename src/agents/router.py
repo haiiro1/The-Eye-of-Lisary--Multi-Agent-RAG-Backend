@@ -9,39 +9,35 @@ class DnDRouter:
         self.llm = LLMFactory.get_model(is_reasoning=False)
 
     def classify_intent(self, user_input: str, messages: list = [], sheet_context: str = None) -> dict:
-        # 1. (Opcional) Lógica de detección de idioma y condensación igual que antes
-
-        # 2. Nueva Lógica de Prioridad Temporal:
-        # Si detectamos que es una duda de reglas/hechizos, enviamos a WEB
-        # hasta que arreglemos el RAG local.
-
         prompt = ChatPromptTemplate.from_template("""
-            Eres el Orquestador de D&D 5e. Clasifica la intención:
-            - 'WEB': Para cualquier duda sobre reglas, hechizos, monstruos o lore (Prioridad actual).
-            - 'SHEET': Solo si pregunta específicamente por "mi" personaje o datos de su ficha.
-            - 'CHAT': Saludos o charla informal.
-            - 'BUILDER': Creación de personajes.
+            Eres el Orquestador de D&D 5e. Clasifica las intenciones del usuario.
+            Puedes elegir múltiples si es necesario, separadas por comas.
 
-            Responde ÚNICAMENTE con la etiqueta.
+            Categorías:
+            - 'WEB': Reglas generales, hechizos, lore o monstruos.
+            - 'SHEET': Datos de la ficha del jugador o "mi" personaje.
+            - 'BUILDER': Creación/modificación de personajes.
+            - 'CHAT': Saludos o charla.
+
             Entrada: {input}
+            Responde ÚNICAMENTE con las etiquetas separadas por comas (ejemplo: WEB, SHEET).
         """)
 
-#
+        raw_response = (prompt | self.llm | StrOutputParser()).invoke({"input": user_input}).strip().upper()
 
-        raw_decision = (prompt | self.llm | StrOutputParser()).invoke({"input": user_input}).strip().upper()
+        # Parsear múltiples intenciones
+        intents = [i.strip() for i in raw_response.split(",")]
 
-        # Forzamos la redirección a WEB para SPELLS y RULES por ahora
-        if any(x in raw_decision for x in ["SPELLS", "RULES", "WEB"]):
-            decision = "WEB"
-        elif "SHEET" in raw_decision:
-            decision = "SHEET"
-        elif "BUILDER" in raw_decision:
-            decision = "BUILDER"
-        else:
-            decision = "CHAT"
+        # Lógica de limpieza (manteniendo la redirección temporal a WEB)
+        final_intents = []
+        for i in intents:
+            if i in ["SPELLS", "RULES", "WEB"]: final_intents.append("WEB")
+            elif "SHEET" in i: final_intents.append("SHEET")
+            elif "BUILDER" in i: final_intents.append("BUILDER")
+            else: final_intents.append("CHAT")
 
         return {
-            "intent": decision,
-            "language": "es", # o el detectado
+            "intents": list(set(final_intents)), # Evitar duplicados
+            "language": "es",
             "contextualized_input": user_input
         }
