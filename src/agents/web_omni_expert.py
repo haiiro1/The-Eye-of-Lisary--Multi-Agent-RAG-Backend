@@ -1,58 +1,44 @@
 from src.core.base_agent import BaseDnDAgent
-from src.tools.wiki_tool import WikiTool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from src.core.logging_config import logger
 
 class WebOmniExpert(BaseDnDAgent):
     def _setup_tools(self):
-        # El experto web usa su herramienta dedicada para buscar en wikis específicas
-        return WikiTool()
+        # El orquestador suministra la información de la Web/Wiki
+        return {}
 
-    def run(self, user_input: str, language: str = "es") -> dict:
-        logger.info(f"🌐 [WebOmniExpert] Consultando fuentes externas (Wikidot/Dandwiki)...")
+    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
+        logger.info(f"🌐 [WebOmniExpert] Consultando conocimiento externo...")
 
-        # 1. Ejecución de la búsqueda web
-        web_results = self.tools.search_all_dnd(user_input)
-
-        # 2. Prompt Maestro del Cronista (Evolucionado)
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el Cronista Omnisciente de la Red, un archimago que filtra la sabiduría de los planos digitales.
-             Tu misión es organizar la información externa de D&D 5e de forma profesional y estructurada.
+            ("system", """Eres el 'Omnisciente del Velo', un experto en D&D 5e con acceso a bibliotecas infinitas.
 
-             REGLAS DE FORMATO Y CONTENIDO:
-             1. CLASIFICACIÓN: Identifica claramente si la fuente es 'WIKIDOT' (Oficial/SRD) o 'DANDWIKI' (Homebrew/Fan-made).
-             
-             2. ESTRUCTURA DE HECHIZOS: Si la información es un conjuro, preséntalo así:
-                ### [Nombre del Hechizo]
-                *Nivel y Escuela*
-                - **Tiempo de lanzamiento:** - **Alcance:** - **Componentes:** - **Duración:** > [Descripción del efecto]
+            TU MISIÓN:
+            Sintetizar información de fuentes externas (Wikis, foros especializados y documentos online) para responder al aventurero.
 
-             3. ESTRUCTURA DE REGLAS: Usa negritas para términos mecánicos y listas claras para condiciones o pasos.
-
-             4. ADVERTENCIA HOMEBREW: Si los datos provienen de 'Dandwiki', DEBES iniciar la respuesta con: 
-                "⚠️ **Nota del Cronista:** Esta información es Homebrew (contenido de fans) y puede no estar balanceada para partidas oficiales."
-
-             5. COMPARACIÓN: Si encuentras la misma regla en ambas fuentes, prioriza Wikidot y menciona que la versión de Dandwiki es una variante.
-
-             IDIOMA: Responde siempre en {lang}.
-             TONO: Épico, sabio y extremadamente organizado."""),
+            DIRECTRICES:
+            1. FILTRADO: Usa los datos externos proporcionados para dar una respuesta veraz.
+            2. CONTEXTO: Si la información proviene de una Wiki, trata de mantener el tono oficial de D&D 5e.
+            3. LIMITACIÓN: Si no hay datos claros en la información proporcionada, usa tu conocimiento base pero advierte que es conocimiento general.
+            4. IDIOMA: Responde en {lang}.
+            """),
             MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "RESULTADOS DE BÚSQUEDA WEB:\n{context}\n\nPREGUNTA DEL JUGADOR: {question}")
+            ("human", """INFORMACIÓN RECUPERADA DEL EXTERIOR:
+            {extra_info}
+
+            CONSULTA DEL AVENTURERO:
+            {question}""")
         ])
 
         chain = prompt | self.llm | StrOutputParser()
 
-        # Invocamos la cadena
+        # Usamos self.memory_messages inyectado por LangGraph
         answer = chain.invoke({
-            "context": web_results,
+            "extra_info": extra_info,
             "question": user_input,
             "lang": language,
-            "chat_history": self.memory.messages # Esto lee el historial
+            "chat_history": self.memory_messages
         })
-
-        # --- ELIMINAMOS LA LÍNEA: self.memory.save_message(...) ---
-        # No es necesaria porque el nodo de LangGraph se encarga de la memoria
-        # al retornar el mensaje al final de la ejecución.
 
         return {"agent": "WebOmniExpert", "answer": answer}

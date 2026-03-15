@@ -1,64 +1,48 @@
 from src.core.base_agent import BaseDnDAgent
-from src.tools.rag_tool import RAGTool
-from src.tools.ConditionExpertTool import ConditionExpertTool
-from src.tools.CombatCalculatorTool import CombatCalculatorTool
-# ELIMINADO: Ya no importa ni instancia WebOmniExpert directamente
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from src.core.logging_config import logger
 
 class SpellMentor(BaseDnDAgent):
     def _setup_tools(self):
-        # El mentor ahora se centra exclusivamente en el conocimiento de manuales locales
-        return {
-            "rag": RAGTool(k=3),
-            "conditions": ConditionExpertTool(),
-            "calculator": CombatCalculatorTool()
-        }
+        # El orquestador suministra la información de hechizos (RAG)
+        return {}
 
     def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
-        logger.info(f"🧙‍♂️ [SpellMentor] Analizando conocimientos arcanos en modo nodo...")
+        logger.info(f"🔮 [SpellMentor] Analizando el tejido arcano...")
 
-        # 1. Buscamos en los manuales locales (RAG)
-        context = self.tools["rag"].search(user_input)
-
-        # 2. Prompt Maestro Arcano
-        # El parámetro extra_info permite recibir conocimiento web procesado previamente por el grafo
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el Mentor de Hechizos del Ojo de Lisary, una autoridad absoluta en artes arcanas y divinas.
-            Tu misión es explicar la magia de D&D 5e con máxima precisión técnica.
+            ("system", """Eres el 'Mentor de Hechizos', un archimago experto en la teoría y práctica de la magia en D&D 5e.
 
-            PROTOCOLOS DE ENSEÑANZA:
-            1. VERACIDAD RAG: Tus respuestas deben basarse ESTRICTAMENTE en el 'CONOCIMIENTO LOCAL (RAG)'. Si un dato (como Componentes M) no aparece en el RAG, di "No especificado en mis archivos" en lugar de inventarlo.
-            2. FICHA TÉCNICA: Indica siempre Nivel, Tiempo de lanzamiento, Alcance (y área de efecto exacta), Componentes y Duración.
-            3. ÁREA DE EFECTO: Sé extremadamente preciso. Diferencia entre Esfera, Cono, Línea o Cilindro según el manual.
-            4. CONCENTRACIÓN: Si el hechizo la requiere, márcalo en negrita al inicio.
-            5. IDIOMA: Responde en {lang}. Usa el nombre en inglés entre paréntesis si es distinto.
-            6. ESTRATEGIA: Sugiere usos tácticos basados en las reglas, pero nunca inventes mecánicas o bonos numéricos que no existan en el sistema D&D 5e."""),
+            TU MISIÓN:
+            Guiar al aventurero en la selección y uso de sus dotes mágicas y conjuros.
 
+            CAPACIDADES ESTRATÉGICAS:
+            1. RECOMENDACIÓN: Sugiere hechizos basados en el nivel y clase del usuario, priorizando la utilidad y el poder.
+            2. SINERGIA: Explica cómo combinar hechizos (ej. "Grasa" + "Crecimiento de Espinas").
+            3. ACLARACIÓN: Explica componentes (V, S, M), tiempos de lanzamiento, concentración de forma sencilla, daño, áreas de efecto, etc.
+
+            CONEXIÓN CON EL ARQUITECTO (CharBuilder):
+            Si el usuario está subiendo de nivel, enfócate en llenar los 'huecos' que el Arquitecto de Almas ha identificado.
+
+            IDIOMA: Responde en {lang}.
+            """),
             MessagesPlaceholder(variable_name="chat_history"),
-
-            ("human", """CONOCIMIENTO LOCAL (RAG):
-            {context}
-
-            CONOCIMIENTO EXTERNO (Ficha de personaje):
+            ("human", """CONJUROS DISPONIBLES Y REGLAS (RAG):
             {extra_info}
 
-            PREGUNTA SOBRE MAGIA: {question}
-
-            Instrucción final: Sé fiel al texto de los manuales. Si el RAG dice que una Bola de Fuego es una ESFERA, no digas que es un cono.""")
+            CONSULTA MÁGICA:
+            {question}""")
         ])
 
         chain = prompt | self.llm | StrOutputParser()
 
-        # La invocación ahora es limpia y depende del estado que le pase el grafo
+        # Usamos self.memory_messages inyectado por LangGraph
         answer = chain.invoke({
-            "context": context,
             "extra_info": extra_info,
             "question": user_input,
             "lang": language,
-            "chat_history": self.memory.messages
+            "chat_history": self.memory_messages
         })
 
-        # Retornamos el formato esperado por el nodo de LangGraph
         return {"agent": "SpellMentor", "answer": answer}
