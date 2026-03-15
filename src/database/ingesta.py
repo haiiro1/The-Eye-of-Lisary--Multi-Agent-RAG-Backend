@@ -17,8 +17,8 @@ def procesar_manuales():
 
     # Configuramos el splitter con valores SEGUROS
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
+        chunk_size=2000,
+        chunk_overlap=250,
         separators=["\n\n", "\n", ". ", " "] # Jamás permitimos "" como separador aquí
     )
 

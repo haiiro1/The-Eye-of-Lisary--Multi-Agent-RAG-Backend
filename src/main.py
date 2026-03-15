@@ -1,35 +1,37 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from src.core.logging_config import logger
+from src.core.memory import get_graph_checkpointer
+from src.agents.graph import workflow
 import uvicorn
 import PyPDF2
 import io
 import os
 
-from src.core.logging_config import logger
-from src.core.memory import get_graph_checkpointer
-from src.agents.graph import workflow
+
 
 # --- CONFIGURACIÓN DE DIRECTORIOS ---
 os.makedirs("data/manuales", exist_ok=True)
 os.makedirs("data/vector_store", exist_ok=True)
 
-# Variables globales para el motor
 app_graph = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestiona el ciclo de vida del checkpointer y el grafo."""
     global app_graph
-    checkpointer = get_graph_checkpointer()
-
-    # Conectamos el saver asíncrono (aiosqlite)
-    async with checkpointer as saver:
-        # Compilamos el grafo con la conexión activa
-        app_graph = workflow.compile(checkpointer=saver)
-        logger.info("✅ El Ojo de Lisary ha despertado con Lifespan y AsyncCheckpointer.")
+    try:
+        checkpointer = get_graph_checkpointer()
+        # Conectamos el saver asíncrono
+        async with checkpointer as saver:
+            # Compilamos el grafo con persistencia
+            app_graph = workflow.compile(checkpointer=saver)
+            logger.info("✅ El Ojo de Lisary ha despertado con Lifespan y AsyncCheckpointer.")
+            yield
+    except Exception as e:
+        logger.error(f"❌ Error al iniciar el grafo: {e}")
         yield
-        # La conexión se cierra automáticamente al salir del bloque 'async with'
 
 app = FastAPI(
     title="The Eye of Lisary API",
@@ -38,7 +40,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Almacenamiento temporal en memoria para las fichas (en producción usar DB/Redis)
 fichas_personajes = {}
 
 class ChatRequest(BaseModel):
@@ -47,58 +48,50 @@ class ChatRequest(BaseModel):
 
 # --- ENDPOINTS ---
 
-@app.get("/")
-async def root():
-    return {
-        "status": "Online",
-        "system": "The Eye of Lisary",
-        "engine": "LangGraph + Asynchronous Persistence"
-    }
-
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "Healthy",
-        "graph_initialized": app_graph is not None
-    }
-
 @app.post("/chat")
 async def chat(request: ChatRequest):
     if not app_graph:
         raise HTTPException(status_code=503, detail="Motor no inicializado.")
 
     try:
-        # Recuperamos el contexto de la ficha si existe
+        # Recuperamos la ficha vinculada a la sesión
         contexto_ficha = fichas_personajes.get(request.session_id, "No hay ficha cargada.")
 
+        # Preparamos el estado inicial
         initial_state = {
             "messages": [("human", request.message)],
             "sheet_context": contexto_ficha,
             "language": "es",
-            "selected_agents": []  # Lista para la orquestación secuencial
+            "selected_agents": []
         }
 
+        # Configuración de hilo para la persistencia
         config = {"configurable": {"thread_id": request.session_id}}
 
-        # Invocación asíncrona (obligatoria para AsyncSqliteSaver)
+        # Invocación asíncrona
         final_state = await app_graph.ainvoke(initial_state, config)
 
-        # Extraemos el contenido del último mensaje (respuesta del Agregador)
+        # Robustez en la extracción de la respuesta final (Aggregator)
         last_message = final_state["messages"][-1]
-        response_content = last_message.content if hasattr(last_message, 'content') else str(last_message)
+        if hasattr(last_message, 'content'):
+            response_content = last_message.content
+        elif isinstance(last_message, tuple):
+            response_content = last_message[1]
+        else:
+            response_content = str(last_message)
 
         return {
             "response": response_content,
             "session_id": request.session_id,
-            "agents_involved": final_state.get("selected_agents", []) # Para debug
+            # Nota: selected_agents estará vacío aquí porque el Aggregator lo limpia al terminar
         }
     except Exception as e:
         logger.error(f"❌ Error en el flujo: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error en el motor: {str(e)}")
 
 @app.post("/upload_sheet/{session_id}")
 async def upload_sheet(session_id: str, file: UploadFile = File(...)):
-    """Procesa un PDF de ficha de personaje y lo vincula a la sesión."""
+    """Extrae texto de PDF y lo guarda en memoria para el CharBuilder."""
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se admiten archivos PDF.")
 
@@ -108,15 +101,14 @@ async def upload_sheet(session_id: str, file: UploadFile = File(...)):
         text_content = ""
 
         for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text_content += page_text + "\n"
+            text_content += page.extract_text() or ""
 
         if not text_content.strip():
-            raise ValueError("El PDF no contiene texto extraíble.")
+            raise ValueError("El PDF está vacío o no es legible.")
 
+        # Guardamos el texto para que el builder_node lo recupere del estado
         fichas_personajes[session_id] = text_content
-        logger.info(f"📄 Ficha vinculada a sesión: {session_id}")
+        logger.info(f"📄 Ficha procesada para sesión: {session_id}")
 
         return {"status": "success", "message": "Ficha vinculada correctamente."}
     except Exception as e:
