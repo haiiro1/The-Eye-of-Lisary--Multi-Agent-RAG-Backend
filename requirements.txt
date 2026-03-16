@@ -16,7 +16,7 @@ langchain-chroma
 chromadb
 langchain-huggingface
 sentence-transformers
-PyPDF2
+pymupdf
 tiktoken
 
 # Herramientas

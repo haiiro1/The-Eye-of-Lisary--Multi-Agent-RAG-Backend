@@ -1,58 +1,60 @@
 import os
-import shutil
-import fitz  # PyMuPDF
+import fitz
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from src.database.vector_engine import VectorEngine
 from src.core.config import settings
-import fitz  # PyMuPDF
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 
-def procesar_manuales():
-    # 1. ELIMINACIÓN MANUAL (DEBES HACERLO ANTES DE CORRER EL SCRIPT)
-    # Borra la carpeta data/vector_store manualmente para limpiar las 5000 letras.
-
+def procesar_manuales_por_pagina():
+    # Conexión al motor de vectores configurado en vector_engine.py
     vector_store = VectorEngine.get_vector_store()
 
-    # Configuramos el splitter con valores SEGUROS
+    # Configuración del splitter
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000,
-        chunk_overlap=250,
-        separators=["\n\n", "\n", ". ", " "] # Jamás permitimos "" como separador aquí
+        chunk_size=1000, # Tamaño menor para que quepan varios por página
+        chunk_overlap=100,
+        separators=["\n\n", "\n", ". ", " "]
     )
 
     archivos_pdf = [f for f in os.listdir(settings.MANUALS_PATH) if f.endswith('.pdf')]
 
     for archivo in archivos_pdf:
         path = os.path.join(settings.MANUALS_PATH, archivo)
+        print(f"📄 Procesando archivo: {archivo}")
 
-        # --- EXTRACCIÓN ROBUSTA ---
-        texto_unificado = ""
-        with fitz.open(path) as doc:
-            for pagina in doc:
-                # Extraemos el texto y nos aseguramos de que sea un STRING plano
-                texto_unificado += str(pagina.get_text("text")) + " "
+        try:
+            with fitz.open(path) as doc:
+                for i, pagina in enumerate(doc):
+                    # Extraer texto de la página actual
+                    texto_pagina = pagina.get_text("text").replace('\x00', '').strip()
 
-        # LIMPIEZA DE CARACTERES NULOS
-        texto_unificado = texto_unificado.replace('\x00', '').strip()
+                    if len(texto_pagina) < 10: # Omitir páginas casi vacías
+                        continue
 
-        print(f"📏 Caracteres totales en {archivo}: {len(texto_unificado)}")
+                    # Dividir el texto de ESTA página en fragmentos
+                    fragmentos = text_splitter.split_text(texto_pagina)
 
-        # --- CORTE SEGURO ---
-        # Usamos split_text sobre el string gigante
-        fragmentos_de_texto = text_splitter.split_text(texto_unificado)
+                    # Crear documentos con metadatos de página para verificación
+                    docs_pagina = [
+                        Document(
+                            page_content=txt,
+                            metadata={
+                                "source": archivo,
+                                "page": i + 1,  # Guardamos el número de página
+                                "chunk_index": idx
+                            }
+                        )
+                        for idx, txt in enumerate(fragmentos)
+                    ]
 
-        print(f"📦 Fragmentos generados: {len(fragmentos_de_texto)}")
+                    if docs_pagina:
+                        vector_store.add_documents(docs_pagina)
+                        print(f"  ✅ Página {i+1}: {len(docs_pagina)} fragmentos indexados.")
 
-        # Convertimos a documentos reales para Chroma
-        docs_finales = [
-            Document(page_content=txt, metadata={"source": archivo}) 
-            for txt in fragmentos_de_texto if len(txt) > 50 # Ignoramos basura
-        ]
+            print(f"✨ Finalizado: {archivo}\n")
 
-        if docs_finales:
-            vector_store.add_documents(docs_finales)
-            print(f"✅ {archivo} indexado correctamente.")
+        except Exception as e:
+            print(f"❌ Error en {archivo}: {e}")
+
 if __name__ == "__main__":
-    procesar_manuales()
+    procesar_manuales_por_pagina()

@@ -1,37 +1,57 @@
 import os
+import fitz  # PyMuPDF
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from src.database.vector_engine import VectorEngine
+from src.core.config import settings
 
-from ddgs import results
-from src.tools.rag_tool import RAGTool
-from src.core.logging_config import logger
+def procesar_manuales_por_pagina():
+    # Obtenemos el vector store
+    vector_store = VectorEngine.get_vector_store()
 
-def test_manuals():
-    print("\n--- 🔍 DIAGNÓSTICO DE RAG ---")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=100,
+        separators=["\n\n", "\n", ". ", " "]
+    )
 
-    # 1. Verificar si existe la base de datos
-    db_path = "data/vector_store"
-    if not os.path.exists(db_path) or not os.listdir(db_path):
-        print("❌ ERROR: La carpeta 'data/vector_store' está vacía o no existe.")
-        print("👉 Debes ejecutar tu script de ingesta de manuales primero.")
-        return
+    # Listar archivos PDF en la ruta configurada
+    archivos_pdf = [f for f in os.listdir(settings.MANUALS_PATH) if f.endswith('.pdf')]
 
-    # 2. Intentar una búsqueda manual
-    try:
-        rag = RAGTool()
-        query = "Bola de Fuego"
-        # Forzamos una búsqueda con k=5 para ver qué hay
-        results = rag.search(query)
+    for archivo in archivos_pdf:
+        path = os.path.join(settings.MANUALS_PATH, archivo)
+        print(f"📄 Procesando: {archivo}")
 
-        if not results:
-            print(f"❓ ChromaDB está activo pero no encontró nada para '{query}'.")
-            print("👉 Esto sugiere que los PDFs no se leyeron correctamente.")
-        else:
-            print(f"✅ ¡Éxito! Se encontraron {len(results)} fragmentos.")
-            # En debug_rag.py, dentro del bucle de impresión:
-        for i, res in enumerate(results):
-            print(f"📄 Fragmento {i+1} (Longitud: {len(res)} caracteres):")
-            print(f"Contenido: '{res}'")
-    except Exception as e:
-        print(f"❌ Error al inicializar RAGTool: {e}")
+        try:
+            with fitz.open(path) as doc:
+                for i, pagina in enumerate(doc):
+                    # Extraer texto de la página actual
+                    texto_pagina = pagina.get_text("text").replace('\x00', '').strip()
+
+                    if len(texto_pagina) < 20: # Ignorar páginas vacías
+                        continue
+
+                    # Fragmentar el texto de la página
+                    fragmentos = text_splitter.split_text(texto_pagina)
+
+                    # Crear documentos con metadato de página
+                    docs_pagina = [
+                        Document(
+                            page_content=txt,
+                            metadata={
+                                "source": archivo,
+                                "page": i + 1  # Guardamos el número de página
+                            }
+                        )
+                        for txt in fragmentos
+                    ]
+
+                    if docs_pagina:
+                        vector_store.add_documents(docs_pagina)
+                        print(f"  ✅ Página {i+1} indexada ({len(docs_pagina)} fragmentos).")
+
+        except Exception as e:
+            print(f"❌ Error en {archivo}: {e}")
 
 if __name__ == "__main__":
-    test_manuals()
+    procesar_manuales_por_pagina()
