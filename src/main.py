@@ -7,6 +7,8 @@ from src.agents.graph import workflow
 import uvicorn
 import fitz  # PyMuPDF
 import os
+from src.core.config import settings
+from langfuse import CallbackHandler, LangfuseHandler
 
 
 
@@ -53,17 +55,34 @@ async def health_check():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    # ... validaciones de app_graph ...
     if not app_graph:
         raise HTTPException(status_code=503, detail="Motor no inicializado.")
     try:
-        contexto_ficha = fichas_personajes.get(request.session_id, "No hay ficha cargada.")
+        # Instancia actualizada del handler para Langfuse v2
+        langfuse_handler = CallbackHandler(
+            public_key=settings.LANGFUSE_PUBLIC_KEY,
+            secret_key=settings.LANGFUSE_SECRET_KEY,
+            host=settings.LANGFUSE_HOST,
+            session_id=request.session_id,
+            # 'metadata' permite añadir datos extra útiles para D&D
+            metadata={"interface": "fastapi", "engine": "fitz"}
+        )
+
         initial_state = {
             "messages": [("human", request.message)],
-            "sheet_context": contexto_ficha,
+            "sheet_context": fichas_personajes.get(request.session_id, ""),
             "language": "es",
             "selected_agents": []
         }
-        config = {"configurable": {"thread_id": request.session_id}}
+
+        # Configuración del grafo incluyendo el callback
+        config = {
+            "configurable": {"thread_id": request.session_id},
+            "callbacks": [langfuse_handler]
+        }
+
+        # Ejecución asíncrona
         final_state = await app_graph.ainvoke(initial_state, config)
 
         last_message = final_state["messages"][-1]

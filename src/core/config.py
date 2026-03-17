@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     CHROMA_PATH: str = str(BASE_DIR / "data" / "vector_store")
     MANUALS_PATH: str = str(BASE_DIR / "data" / "manuales")
 
+    # --- CONFIGURACIÓN DE LANGFUSE ---
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com" # O tu host autohospedado
+
     # --- CONFIGURACIÓN DE MODELOS (QWEN 2.5) ---
     ROUTING_MODEL: str = "accounts/fireworks/models/qwen3-8b"
     REASONING_MODEL: str = "accounts/fireworks/models/qwen3-8b"

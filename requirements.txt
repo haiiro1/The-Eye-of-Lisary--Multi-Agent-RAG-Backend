@@ -1,35 +1,36 @@
-# Servidor y API
-fastapi
-uvicorn
-pydantic-settings
-python-dotenv
-python-multipart
+# --- NÚCLEO DEL SERVIDOR ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic-settings>=2.2.1
+python-dotenv>=1.0.1
+python-multipart>=0.0.9
 
-# IA y Modelos
-langchain
-langchain-community
-langchain-openai
-langchain-google-genai
-langchain-chroma
+# --- ORQUESTACIÓN DE AGENTES (LANGGRAPH) ---
+langgraph>=0.0.30
+langchain-core>=0.1.33
+aiosqlite>=0.20.0
 
-# Base de datos y RAG
-chromadb
-langchain-huggingface
-sentence-transformers
-pymupdf
-tiktoken
+# --- ECOSISTEMA LANGCHAIN ---
+langchain>=0.1.13
+langchain-community>=0.0.29
+langchain-fireworks>=0.1.1
+langchain-openai>=0.1.0
+langchain-google-genai>=1.0.1
+langchain-chroma>=0.1.0
 
-# Herramientas
-tavily-python
+# --- MONITOREO Y OBSERVABILIDAD (LATEST) ---
+langfuse>=2.20.0
 
-ddgs
+# --- RAG Y PROCESAMIENTO DE DATOS ---
+chromadb>=0.4.24
+pymupdf>=1.24.0
+langchain-huggingface>=0.0.1
+sentence-transformers>=2.6.0
+tiktoken>=0.6.0
 
-#langgraph
-langgraph
-langchain-core
-langgraph.checkpoint.sqlite
+# --- HERRAMIENTAS DE BÚSQUEDA Y UTILIDADES ---
+tavily-python>=0.3.3
+duckduckgo-search>=5.0.0
 
-# ui simple
-streamlit
-
-aiosqlite
+# --- INTERFAZ DE PRUEBAS ---
+streamlit>=1.32.0

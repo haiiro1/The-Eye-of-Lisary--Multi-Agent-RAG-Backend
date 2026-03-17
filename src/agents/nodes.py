@@ -9,8 +9,9 @@ from src.tools.wiki_tool import WikiTool
 from src.tools.sheet_manager import SheetManager
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableConfig
 
-# Inicialización única de herramientas gestionadas por el orquestador
+# Inicialización de herramientas
 rag_tool = RAGTool(k=3)
 wiki_tool = WikiTool()
 sheet_manager = SheetManager()
@@ -21,16 +22,18 @@ def _get_text(message):
     return str(message)
 
 # --- NODO: CONSTRUCCIÓN/FICHAS ---
-def builder_node(state: AgentState):
-    user_input = _get_text(state["messages"][-1])
+def builder_node(state: AgentState, config: RunnableConfig):
+    # Extraemos callbacks y session_id (thread_id) del config
+    callbacks = config.get("callbacks", [])
+    session_id = config["configurable"].get("thread_id", "default_session")
 
-    # 1. El orquestador prepara el contexto
+    user_input = _get_text(state["messages"][-1])
     manual_context = rag_tool.search(user_input)
     sheet_context = state.get("sheet_context", "Ficha no disponible")
     combined_info = f"MANUALES:\n{manual_context}\n\nESTADO FICHA:\n{sheet_context}"
 
-    # 2. El agente procesa la información
-    expert = CharBuilder(session_id="lg_session", chat_history=state["messages"])
+    # Inyectamos los callbacks al agente
+    expert = CharBuilder(session_id=session_id, chat_history=state["messages"], callbacks=callbacks)
     result = expert.run(
         user_input=user_input,
         language=state.get("language", "es"),
@@ -40,13 +43,14 @@ def builder_node(state: AgentState):
     return {"messages": [("assistant", f"[CHAR_BUILDER]: {result['answer']}")]}
 
 # --- NODO: HECHIZOS ---
-def spell_node(state: AgentState):
-    user_input = _get_text(state["messages"][-1])
+def spell_node(state: AgentState, config: RunnableConfig):
+    callbacks = config.get("callbacks", [])
+    session_id = config["configurable"].get("thread_id", "default_session")
 
-    # Buscamos específicamente hechizos en el RAG
+    user_input = _get_text(state["messages"][-1])
     spell_info = rag_tool.search(f"Hechizos: {user_input}")
 
-    expert = SpellMentor(session_id="lg_session", chat_history=state["messages"])
+    expert = SpellMentor(session_id=session_id, chat_history=state["messages"], callbacks=callbacks)
     result = expert.run(
         user_input=user_input,
         language=state.get("language", "es"),
@@ -56,13 +60,14 @@ def spell_node(state: AgentState):
     return {"messages": [("assistant", f"[SPELL_MENTOR]: {result['answer']}")]}
 
 # --- NODO: REGLAS ---
-def rules_node(state: AgentState):
-    user_input = _get_text(state["messages"][-1])
+def rules_node(state: AgentState, config: RunnableConfig):
+    callbacks = config.get("callbacks", [])
+    session_id = config["configurable"].get("thread_id", "default_session")
 
-    # Buscamos la regla técnica
+    user_input = _get_text(state["messages"][-1])
     rule_info = rag_tool.search(f"Regla oficial: {user_input}")
 
-    expert = RulesExpert(session_id="lg_session", chat_history=state["messages"])
+    expert = RulesExpert(session_id=session_id, chat_history=state["messages"], callbacks=callbacks)
     result = expert.run(
         user_input=user_input,
         language=state.get("language", "es"),
@@ -71,14 +76,15 @@ def rules_node(state: AgentState):
 
     return {"messages": [("assistant", f"[RULES_EXPERT]: {result['answer']}")]}
 
-# --- NODO: WEB (Filtro de respaldo/Wiki) ---
-def web_node(state: AgentState):
-    user_input = _get_text(state["messages"][-1])
+# --- NODO: WEB ---
+def web_node(state: AgentState, config: RunnableConfig):
+    callbacks = config.get("callbacks", [])
+    session_id = config["configurable"].get("thread_id", "default_session")
 
-    # El orquestador busca en la Wiki
+    user_input = _get_text(state["messages"][-1])
     web_info = wiki_tool.search(user_input)
 
-    expert = WebOmniExpert(session_id="lg_session", chat_history=state["messages"])
+    expert = WebOmniExpert(session_id=session_id, chat_history=state["messages"], callbacks=callbacks)
     result = expert.run(
         user_input=user_input,
         language=state.get("language", "es"),
@@ -87,9 +93,11 @@ def web_node(state: AgentState):
 
     return {"messages": [("assistant", f"[WEB_EXPERT]: {result['answer']}")]}
 
-# --- NODO: AGREGADOR (Unificador de respuestas) ---
-def aggregator_node(state: AgentState):
-    llm = LLMFactory.get_model(is_reasoning=False)
+# --- NODO: AGREGADOR ---
+def aggregator_node(state: AgentState, config: RunnableConfig):
+    # El agregador también debe reportar sus métricas a Langfuse
+    callbacks = config.get("callbacks", [])
+    llm = LLMFactory.get_model(is_reasoning=False, callbacks=callbacks)
 
     prompt = ChatPromptTemplate.from_template("""
         Eres el 'Ojo de Lisary', guía místico de D&D 5e.
@@ -106,12 +114,13 @@ def aggregator_node(state: AgentState):
     """)
 
     chain = prompt | llm | StrOutputParser()
+    # Pasamos el config (que contiene los callbacks) a invoke
     unified_answer = chain.invoke({
         "messages": state["messages"],
         "language": state.get("language", "es")
-    })
+    }, config=config)
 
     return {
         "messages": [("assistant", unified_answer)],
-        "selected_agents": [] # Limpiamos la cola
+        "selected_agents": []
     }
