@@ -1,14 +1,20 @@
 from src.core.base_agent import BaseDnDAgent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableConfig # <--- Importante
 from src.core.logging_config import logger
+from typing import Optional
 
 class RulesExpert(BaseDnDAgent):
     def _setup_tools(self):
         # El orquestador suministra la información de manuales (RAG)
         return {}
 
-    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
+    def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> dict:
+        """
+        Ejecuta el análisis de reglas.
+        Ahora acepta 'config' para que Langfuse registre la generación del LLM.
+        """
         logger.info(f"⚖️ [RulesExpert] Analizando mecánicas y reglas...")
 
         prompt = ChatPromptTemplate.from_messages([
@@ -31,14 +37,16 @@ class RulesExpert(BaseDnDAgent):
             {question}""")
         ])
 
+        # Construimos la cadena
         chain = prompt | self.llm | StrOutputParser()
 
-        # Usamos self.memory_messages inyectado por LangGraph
+        # Al pasar 'config' al invoke, LangChain busca automáticamente
+        # los callbacks de Langfuse que inyectamos en main.py
         answer = chain.invoke({
             "extra_info": extra_info,
             "question": user_input,
             "lang": language,
             "chat_history": self.memory_messages
-        })
+        }, config=config)
 
         return {"agent": "RulesExpert", "answer": answer}

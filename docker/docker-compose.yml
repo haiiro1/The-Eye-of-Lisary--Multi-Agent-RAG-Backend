@@ -1,7 +1,6 @@
 services:
   backend:
     build:
-      # El contexto indica que los archivos (src, requirements.txt) están un nivel arriba
       context: ..
       dockerfile: docker/Dockerfile
     container_name: eye-of-lisary-backend
@@ -10,9 +9,29 @@ services:
     env_file:
       - ../.env
     volumes:
-      # Mapeo de persistencia de datos y manuales desde la raíz
-      - ../data/manuales:/app/data/manuales
-      - ../data/vector_store:/app/data/vector_store
-      - ../data/chat_history.db:/app/data/chat_history.db
-      - ../data/ojo_de_lisary.log:/app/data/ojo_de_lisary.log
+      - ../data:/app/data
+      - ../src:/app/src # Solo para desarrollo, permite Hot Reload
+    deploy:
+      resources:
+        limits:
+          memory: 2G # Los modelos de embedding consumen RAM
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: eye-of-lisary-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000/chat
+      - UPLOAD_URL=http://backend:8000/upload_sheet
+    depends_on:
+      backend:
+        condition: service_healthy # Espera a que el healthcheck del backend pase
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     restart: unless-stopped

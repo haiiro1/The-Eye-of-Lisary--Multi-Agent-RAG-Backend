@@ -22,15 +22,14 @@ class LLMFactory:
         # Configuramos el modelo usando la librería nativa de Fireworks
         #se integra porque es mas eficiente que el wrapper genérico de OpenAI
         return ChatFireworks(
-            model=model_name,
-            fireworks_api_key=settings.FIREWORKS_API_KEY,
-            temperature=0.7 if is_reasoning else 0.1,
-            max_tokens=2048 if is_reasoning else 512,
-            model_kwargs={
-                "top_p": 0.9,
-                "stop": STOP_TOKENS
-            },
-            # Inyectamos callbacks si se proporcionan,
-            # permitiendo que Langfuse rastree cada llamada al LLM
-            callbacks=callbacks
-        )
+        model=model_name,
+        fireworks_api_key=settings.FIREWORKS_API_KEY,
+        temperature=0.7 if is_reasoning else 0.2, # Un poco más bajo para el agregador
+        # Aumentamos a 1024 para que el agregador no se corte
+        max_tokens=2048 if is_reasoning else 1024, 
+        model_kwargs={
+            "top_p": 0.9,
+            "stop": STOP_TOKENS
+        },
+        callbacks=callbacks
+    )

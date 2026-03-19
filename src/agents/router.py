@@ -1,50 +1,68 @@
-# src/agents/router.py
+import re
 from src.core.factory import LLMFactory
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from src.core.logging_config import logger
+from typing import Optional, List
 
 class DnDRouter:
-    def __init__(self):
-        # Usamos un modelo rápido para la clasificación
-        self.llm = LLMFactory.get_model(is_reasoning=False)
+    def __init__(self, callbacks: Optional[List] = None):
+        self.callbacks = callbacks
+        # Forzamos un modelo NO de razonamiento para clasificación si es posible, 
+        # o un prompt mucho más agresivo.
+        self.llm = LLMFactory.get_model(is_reasoning=False, callbacks=self.callbacks)
 
     def classify_intent(self, user_input: str) -> dict:
         logger.info(f"🔍 [Router] Clasificando intención: {user_input[:50]}...")
 
+        # Prompt optimizado para evitar explicaciones
         prompt = ChatPromptTemplate.from_template("""
-            Eres el Orquestador Arcano de D&D 5e. Tu trabajo es analizar la petición del aventurero
-            y decidir qué especialistas deben intervenir.
+            [SISTEMA: MODO CLASIFICACIÓN ESTRICTO]
+            Analiza la petición de D&D 5e y devuelve una lista de etiquetas.
 
-            ESPECIALISTAS DISPONIBLES:
-            - 'BUILDER': Creación de personajes, optimización, subir de nivel, cambios en la ficha.
-            - 'SPELLS': Consulta de hechizos, recomendaciones mágicas, aprendizaje de conjuros.
-            - 'RULES': Mecánicas de combate, condiciones, dotes, reglas de ambiente.
-            - 'WEB': Lore del mundo, datos de wikis, o si no encaja en las anteriores.
-            - 'CHAT': Saludos o charlas irrelevantes para el juego.
+            ETIQUETAS:
+            - RULES: Mecánicas, combate, dotes, Action Surge, ataques.
+            - SPELLS: Hechizos, conjuros, magia.
+            - BUILDER: Personajes, niveles, ficha, clases.
+            - WEB: Lore, wikis, datos externos.
+            - CHAT: Saludos o charlas breves.
 
-            REGLA MULTI-AGENTE:
-            Si el usuario sube de nivel o pide algo complejo, selecciona VARIOS.
-            Ejemplo: "Subí a nivel 2 de Mago" -> BUILDER, SPELLS.
-            Ejemplo: "¿Cómo funciona el ataque de oportunidad de este nuevo dote?" -> RULES, BUILDER.
+            REGLA: Responde SOLO con las etiquetas en mayúsculas separadas por comas.
+            Sin explicaciones, sin etiquetas de formato, sin introducciones.
 
-            Responde ÚNICAMENTE con las etiquetas separadas por comas.
             Entrada: {input}
-        """)
+            Respuesta:""")
 
-        # Invocación y limpieza
-        raw = (prompt | self.llm | StrOutputParser()).invoke({"input": user_input}).upper()
-        intents = [i.strip() for i in raw.split(",")]
+        chain = prompt | self.llm | StrOutputParser()
 
-        # Mapeo y validación de etiquetas contra los nodos del grafo
-        final_intents = []
-        valid_nodes = ["BUILDER", "SPELLS", "RULES", "WEB"]
+        try:
+            raw_response = chain.invoke(
+                {"input": user_input},
+                config={"callbacks": self.callbacks, "run_name": "Router_Intent_Classification"}
+            )
 
-        for i in intents:
-            if i in valid_nodes:
-                final_intents.append(i.lower())
-            elif i == "CHAT":
-                continue # El orquestador enviará al aggregator por defecto si no hay agentes
+            # --- LIMPIEZA ANTIBALAS ---
+            # 1. Eliminamos bloques <think> si el modelo los añade
+            clean_text = re.sub(r'<think>.*?</think>', '', raw_response, flags=re.DOTALL)
 
-        # Eliminamos duplicados
-        return {"intents": list(set(final_intents))}
+            # 2. Pasamos a mayúsculas y limpiamos espacios
+            raw_upper = clean_text.upper().strip()
+
+            # 3. Extraemos solo las palabras válidas usando regex para ignorar puntos, frases o basura
+            found_tags = re.findall(r'(RULES|SPELLS|BUILDER|WEB|CHAT)', raw_upper)
+
+            # Mapeo final
+            final_intents = []
+            for tag in found_tags:
+                if tag != "CHAT":
+                    final_intents.append(tag.lower())
+
+            # Eliminamos duplicados
+            final_intents = list(set(final_intents))
+
+            logger.info(f"✅ [Router] Intenciones finales: {final_intents}")
+            return {"intents": final_intents}
+
+        except Exception as e:
+            logger.error(f"❌ Error en la clasificación del Router: {e}")
+            return {"intents": []}

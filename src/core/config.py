@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     MANUALS_PATH: str = str(BASE_DIR / "data" / "manuales")
 
     # --- CONFIGURACIÓN DE LANGFUSE ---
-    LANGFUSE_PUBLIC_KEY: str = ""
-    LANGFUSE_SECRET_KEY: str = ""
-    LANGFUSE_HOST: str = "https://cloud.langfuse.com" # O tu host autohospedado
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
 
     # --- CONFIGURACIÓN DE MODELOS (QWEN 2.5) ---
     ROUTING_MODEL: str = "accounts/fireworks/models/qwen3-8b"
@@ -26,8 +26,10 @@ class Settings(BaseSettings):
         env_file=str(Path(__file__).resolve().parent.parent.parent / ".env"),
         extra="ignore"
     )
-    # --- PERSISTENCIA ---
+    # --- PERSISTENCIA db ---
     # Ruta para la base de datos de hilos de LangGraph
     DB_PATH: str = str(BASE_DIR / "data" / "chat_history.db")
 
 settings = Settings()
+
+DB_PATH = settings.DB_PATH
