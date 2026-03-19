@@ -1,94 +1,66 @@
 import streamlit as st
 import requests
+import json
 import uuid
 import re
-import fitz  # PyMuPDF
 import os
 
-st.set_page_config(page_title="Ojo de Lisary - UI Test", page_icon="👁️", layout="wide")
-
-# --- Configuración Dinámica ---
-# Cambia a "http://backend:8000" si usas Docker Compose para la UI también
+st.set_page_config(page_title="Ojo de Lisary", page_icon="👁️")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/chat")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "thread_id" not in st.session_state:
-    st.session_state.thread_id = str(uuid.uuid4())
-if "sheet_context" not in st.session_state:
-    st.session_state.sheet_context = ""
+if "messages" not in st.session_state: st.session_state.messages = []
+if "thread_id" not in st.session_state: st.session_state.thread_id = str(uuid.uuid4())
 
-st.title("👁️ Ojo de Lisary: D&D 5e Assistant")
+st.title("👁️ Ojo de Lisary Assistant")
 
 with st.sidebar:
     st.header("⚙️ Configuración")
-    st.info(f"ID de Sesión: `{st.session_state.thread_id[:8]}`")
-
     uploaded_file = st.file_uploader("Sube tu ficha (PDF)", type="pdf")
-    if uploaded_file:
-        try:
-            # Solo procesamos si el contexto está vacío para ahorrar recursos
-            if not st.session_state.sheet_context:
-                with st.spinner("Leyendo ficha..."):
-                    doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-                    full_text = ""
-                    for page in doc:
-                        full_text += page.get_text()
-                    st.session_state.sheet_context = full_text[:3000] # Un poco más de margen
-                st.success("✅ Ficha cargada.")
-        except Exception as e:
-            st.error(f"Error al leer el PDF: {e}")
+    if uploaded_file and "file_sent" not in st.session_state:
+        with st.spinner("Vinculando ficha..."):
+            files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
+            r = requests.post(f"{BACKEND_URL}/upload_sheet/{st.session_state.thread_id}", files=files)
+            if r.status_code == 200:
+                st.session_state.file_sent = True
+                st.success("✅ Ficha vinculada.")
 
-    if st.button("🗑️ Reiniciar Chat"):
-        # 1. Limpiamos TODO el session_state de Streamlit
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        
-        # 2. Re-inicializamos solo lo necesario con valores nuevos
+    if st.button("🗑️ Reiniciar"):
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
-        st.session_state.sheet_context = ""
-        
-        # 3. Forzamos el reinicio total de la app de Streamlit
+        if "file_sent" in st.session_state: del st.session_state.file_sent
         st.rerun()
 
-# --- Interfaz de Chat ---
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# Mostrar historial
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-if prompt := st.chat_input("Pregunta sobre reglas, hechizos o tu personaje..."):
+# Chat Input
+if prompt := st.chat_input("¿Qué deseas consultar?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    with st.chat_message("user"): st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Consultando los manuales antiguos..."):
-            try:
-                # IMPORTANTE: Enviamos el context de la ficha en cada mensaje 
-                # si tu backend lo espera como parte del initial_state
-                payload = {
-                    "message": prompt,
-                    "session_id": st.session_state.thread_id
-                }
+        response_placeholder = st.empty()
+        full_response = ""
 
-                response = requests.post(BACKEND_URL, json=payload, timeout=60)
+        # Petición de Streaming al Backend
+        payload = {"message": prompt, "session_id": st.session_state.thread_id}
+        with requests.post(BACKEND_URL, json=payload, stream=True) as r:
+            for line in r.iter_lines():
+                if line:
+                    decoded = line.decode('utf-8')
+                    if decoded.startswith("data: "):
+                        data_str = decoded[6:]
+                        if data_str == "[DONE]": break
 
-                if response.status_code == 200:
-                    data = response.json()
-                    answer = data.get("response", "Sin respuesta.")
-                    agents = data.get("agents_involved", [])
+                        try:
+                            token = json.loads(data_str).get("token", "")
+                            full_response += token
+                            # Limpieza visual inmediata de pensamientos internos
+                            clean_view = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL)
+                            response_placeholder.markdown(clean_view + "▌")
+                        except: continue
 
-                    # Limpieza de tokens de pensamiento (DeepSeek/Qwen)
-                    answer = re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', answer, flags=re.DOTALL).strip()
-
-                    st.markdown(answer)
-                    if agents:
-                        st.caption(f"🛡️ Especialistas: {', '.join(agents).upper()}")
-
-                    st.session_state.messages.append({"role": "assistant", "content": answer})
-                else:
-                    st.error(f"Error {response.status_code}: {response.text}")
-
-            except Exception as e:
-                st.error(f"❌ Error de conexión: {e}")
+        final_text = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
+        response_placeholder.markdown(final_text)
+        st.session_state.messages.append({"role": "assistant", "content": final_text})
