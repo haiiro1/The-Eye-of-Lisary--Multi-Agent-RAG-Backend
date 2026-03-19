@@ -1,14 +1,20 @@
 from src.core.base_agent import BaseDnDAgent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableConfig # Fundamental para el rastro
 from src.core.logging_config import logger
+from typing import Optional
 
 class WebOmniExpert(BaseDnDAgent):
     def _setup_tools(self):
         # El orquestador suministra la información de la Web/Wiki
         return {}
 
-    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
+    def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> dict:
+        """
+        Ejecuta la síntesis de conocimiento externo.
+        Acepta 'config' para propagar los callbacks de Langfuse.
+        """
         logger.info(f"🌐 [WebOmniExpert] Consultando conocimiento externo...")
 
         prompt = ChatPromptTemplate.from_messages([
@@ -31,14 +37,17 @@ class WebOmniExpert(BaseDnDAgent):
             {question}""")
         ])
 
+        # Construcción de la cadena uniendo prompt, modelo y parser
         chain = prompt | self.llm | StrOutputParser()
 
-        # Usamos self.memory_messages inyectado por LangGraph
+        # --- PROPAGACIÓN DEL CONFIG ---
+        # Al pasar el config, permitimos que LangChain envíe la telemetría
+        # del LLM (tokens, tiempo, coste) directamente a Langfuse.
         answer = chain.invoke({
             "extra_info": extra_info,
             "question": user_input,
             "lang": language,
             "chat_history": self.memory_messages
-        })
+        }, config=config)
 
         return {"agent": "WebOmniExpert", "answer": answer}

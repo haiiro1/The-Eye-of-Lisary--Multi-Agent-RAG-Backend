@@ -1,36 +1,37 @@
 # --- NÚCLEO DEL SERVIDOR ---
-fastapi>=0.110.0
-uvicorn[standard]>=0.28.0
-pydantic-settings>=2.2.1
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic-settings>=2.4.0
 python-dotenv>=1.0.1
-python-multipart>=0.0.9
+python-multipart>=0.0.12
 
-# --- ORQUESTACIÓN DE AGENTES (LANGGRAPH) ---
-langgraph>=0.0.30
-langchain-core>=0.1.33
+# --- ORQUESTACIÓN DE AGENTES (LANGGRAPH V2+) ---
+langgraph>=0.2.35
+langgraph-checkpoint-sqlite>=2.0.1
+langchain-core>=0.3.0
 aiosqlite>=0.20.0
 
 # --- ECOSISTEMA LANGCHAIN ---
-langchain>=0.1.13
-langchain-community>=0.0.29
-langchain-fireworks>=0.1.1
-langchain-openai>=0.1.0
-langchain-google-genai>=1.0.1
-langchain-chroma>=0.1.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-fireworks>=0.2.0
+langchain-chroma>=0.1.4
 
-# --- MONITOREO Y OBSERVABILIDAD (LATEST) ---
-langfuse>=2.20.0
+# --- MONITOREO Y OBSERVABILIDAD ---
+langfuse>=2.50.0
 
 # --- RAG Y PROCESAMIENTO DE DATOS ---
-chromadb>=0.4.24
-pymupdf>=1.24.0
-langchain-huggingface>=0.0.1
-sentence-transformers>=2.6.0
-tiktoken>=0.6.0
+chromadb>=0.5.5
+pymupdf>=1.24.10
+tiktoken>=0.7.0
+opentelemetry-api>=1.25.0
+opentelemetry-sdk>=1.25.0
+opentelemetry-instrumentation-fastapi>=0.46b0
 
 # --- HERRAMIENTAS DE BÚSQUEDA Y UTILIDADES ---
-tavily-python>=0.3.3
-duckduckgo-search>=5.0.0
+langchain-tavily>=0.1.0
+duckduckgo-search>=6.2.0
+ddgs
 
 # --- INTERFAZ DE PRUEBAS ---
-streamlit>=1.32.0
+streamlit>=1.38.0

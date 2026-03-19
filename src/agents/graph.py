@@ -1,7 +1,11 @@
 from langgraph.graph import StateGraph, END
+from langchain_core.runnables import RunnableConfig
 from src.core.state import AgentState
+
+# Importación de tus nodos
 from src.agents.nodes import (
     builder_node,
+    get_human_query,
     web_node,
     aggregator_node,
     rules_node,
@@ -9,20 +13,34 @@ from src.agents.nodes import (
 )
 from src.agents.router import DnDRouter
 
-def router_node(state: AgentState):
+# --- NODOS DE CONTROL ---
+def router_node(state: AgentState, config: RunnableConfig):
     """
-    Analiza la entrada del usuario (si es el inicio) o verifica
-    la cola de agentes seleccionados.
+    Analiza la entrada e inyecta callbacks.
+    ESTA VERSIÓN BLOQUEA EL BUCLE INFINITO.
     """
-    # Si ya hay agentes seleccionados, no volvemos a clasificar (evita bucles)
-    if state.get("selected_agents"):
-        return {"selected_agents": state["selected_agents"]}
+    # 1. Si ya hay agentes en la cola, NO se clasifica,se deja que fluyan.
+    if state.get("selected_agents") and len(state["selected_agents"]) > 0:
+        return {}
 
-    router = DnDRouter()
     last_msg = state["messages"][-1]
-    text = last_msg[1] if isinstance(last_msg, tuple) else last_msg.content
+    # Extraemos el contenido sin importar si es tupla o mensaje de LangChain
+    content = last_msg[1] if isinstance(last_msg, tuple) else last_msg.content
 
-    # Clasificamos la intención por primera vez
+
+    # Si el mensaje contiene etiquetas de expertos, significa que ya pasamos por ahí.
+    expert_tags = ["[RULES_EXPERT]", "[SPELL_MENTOR]", "[CHAR_BUILDER]", "[WEB_EXPERT]"]
+    if any(tag in content for tag in expert_tags):
+        print("DEBUG: Detectado mensaje de experto. Limpiando cola para ir al agregador.")
+        return {"selected_agents": []}
+
+    # 3. Solo si es un mensaje de un humano real, clasificamos
+    callbacks = config.get("callbacks", [])
+    router = DnDRouter(callbacks=callbacks)
+
+    # Usamos la función de ayuda que ya tienes para obtener el texto limpio
+    text = get_human_query(state["messages"])
+
     result = router.classify_intent(text)
 
     return {
@@ -30,24 +48,26 @@ def router_node(state: AgentState):
     }
 
 def orchestrator(state: AgentState):
-    """
-    Controlador de flujo que consume la cola de 'selected_agents'.
-    Si la lista está vacía, finaliza en el agregador.
-    """
+    # Obtenemos la lista actual de agentes pendientes
     pending = state.get("selected_agents", [])
 
+    print(f"\n--- DEBUG ORQUESTADOR ---")
+    print(f"Cola recibida: {pending}")
+
     if not pending:
+        print("Resultado: Yendo a AGGREGATOR (Cola vacía)")
         return "aggregator"
 
-    # Extrae el siguiente agente de la lista (ej: "builder", "spells")
-    next_agent = pending.pop(0).lower()
+    next_agent = str(pending[0]).lower().strip()
 
-    # Mapeo dinámico a los nodos registrados
+    print(f"Agente normalizado: '{next_agent}'")
+
     if next_agent in ["web", "builder", "rules", "spells"]:
+        print(f"Resultado: Yendo a NODO '{next_agent}'")
         return next_agent
 
+    print(f"Resultado: Yendo a AGGREGATOR (No reconocido)")
     return "aggregator"
-
 # --- DISEÑO DEL FLUJO ---
 workflow = StateGraph(AgentState)
 
@@ -59,10 +79,9 @@ workflow.add_node("rules", rules_node)
 workflow.add_node("spells", spell_node)
 workflow.add_node("aggregator", aggregator_node)
 
-# Configuración de entrada
 workflow.set_entry_point("router_node")
 
-# Bordes condicionales desde el router
+# Bordes condicionales y fijos
 workflow.add_conditional_edges(
     "router_node",
     orchestrator,
@@ -75,15 +94,13 @@ workflow.add_conditional_edges(
     }
 )
 
-# REGLA CRÍTICA: Los especialistas vuelven al router para ver si hay 
-# más agentes pendientes en la cola (selected_agents)
+# El ciclo vuelve al router para consumir el siguiente agente de la lista
 workflow.add_edge("web", "router_node")
 workflow.add_edge("builder", "router_node")
 workflow.add_edge("rules", "router_node")
 workflow.add_edge("spells", "router_node")
-
-# El agregador es el fin del camino
 workflow.add_edge("aggregator", END)
 
-# Compilación
-app = workflow.compile()
+# --- EXPORTACIÓN ---
+# Exportamos el objeto workflow para compilarlo con el checkpointer activo en la ejecución.
+agent_workflow = workflow

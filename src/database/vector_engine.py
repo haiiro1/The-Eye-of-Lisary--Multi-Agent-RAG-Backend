@@ -1,31 +1,24 @@
 import os
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_fireworks import FireworksEmbeddings # <--- Cambiamos esto
 from langchain_chroma import Chroma
 from src.core.config import settings
 
 class VectorEngine:
-    # Variable de clase para cachear el modelo y no recargarlo en cada nodo
     _embedding_model = None
 
     @classmethod
     def get_embedding_model(cls):
-        """Carga y devuelve el modelo de embeddings con cacheo."""
+        """Carga el modelo de Fireworks (Ejecución en la nube, 0ms de carga local)."""
         if cls._embedding_model is None:
-            # all-MiniLM-L6-v2 es eficiente para CPU
-            cls._embedding_model = HuggingFaceEmbeddings(
-                model_name="all-MiniLM-L6-v2",
-                model_kwargs={'device': 'cpu'}
+            # Usamos el modelo de Nomic en Fireworks (muy potente y barato)
+            cls._embedding_model = FireworksEmbeddings(
+                model="nomic-ai/nomic-embed-text-v1.5",
+                fireworks_api_key=settings.FIREWORKS_API_KEY
             )
         return cls._embedding_model
 
     @classmethod
     def get_vector_store(cls):
-        """
-        Configura y devuelve la conexión persistente a ChromaDB.
-        Definimos explícitamente la métrica de distancia.
-        'cosine' es superior para embeddings de texto que 'l2'.
-        que mide?: l2 Mide la distancia en línea recta entre los puntos finales de los vectores.
-        """
         if not os.path.exists(settings.CHROMA_PATH):
             os.makedirs(settings.CHROMA_PATH, exist_ok=True)
 

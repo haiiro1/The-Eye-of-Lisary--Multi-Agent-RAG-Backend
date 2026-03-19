@@ -1,50 +1,48 @@
 import streamlit as st
-import sys
-import os
+import requests
+import uuid
 import re
-import io
-import PyPDF2
+import fitz  # PyMuPDF
+import os
 
-# Asegurar que el directorio raíz esté en el path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+st.set_page_config(page_title="Ojo de Lisary - UI Test", page_icon="👁️", layout="wide")
 
-from src.main import graph
-from src.core.logging_config import logger
-from src.tools.sheet_manager import SheetManager
+# --- Configuración Dinámica ---
+# Cambia a "http://backend:8000" si usas Docker Compose para la UI también
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/chat")
 
-st.set_page_config(page_title="Ojo de Lisary - Test UI", page_icon="👁️", layout="wide")
-
-# --- Inicialización de Sesión ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "sheet_context" not in st.session_state:
-    st.session_state.sheet_context = "No hay ficha cargada."
-# Creamos un ID único para esta pestaña del navegador para la DB de SQLite
 if "thread_id" not in st.session_state:
-    import uuid
     st.session_state.thread_id = str(uuid.uuid4())
+if "sheet_context" not in st.session_state:
+    st.session_state.sheet_context = ""
 
 st.title("👁️ Ojo de Lisary: D&D 5e Assistant")
-st.subheader("Laboratorio de Pruebas de Agentes")
 
-# --- Barra Lateral ---
 with st.sidebar:
-    st.header("⚙️ Panel de Control")
-    st.info(f"Sesión activa: `{st.session_state.thread_id[:8]}`")
+    st.header("⚙️ Configuración")
+    st.info(f"ID de Sesión: `{st.session_state.thread_id[:8]}`")
 
     uploaded_file = st.file_uploader("Sube tu ficha (PDF)", type="pdf")
     if uploaded_file:
         try:
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-            raw_text = "".join([page.extract_text() for page in pdf_reader.pages])
-            st.session_state.sheet_context = SheetManager.format_sheet_context(raw_text)
-            st.success("✅ Ficha procesada.")
+            # Solo procesamos si el contexto está vacío para ahorrar recursos
+            if not st.session_state.sheet_context:
+                with st.spinner("Leyendo ficha..."):
+                    doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                    full_text = ""
+                    for page in doc:
+                        full_text += page.get_text()
+                    st.session_state.sheet_context = full_text[:3000] # Un poco más de margen
+                st.success("✅ Ficha cargada.")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Error al leer el PDF: {e}")
 
-    if st.button("🗑️ Borrar Historial"):
+    if st.button("🗑️ Reiniciar Chat"):
         st.session_state.messages = []
-        # Opcional: podrías generar un nuevo thread_id aquí para empezar de cero en la DB
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.sheet_context = ""
         st.rerun()
 
 # --- Interfaz de Chat ---
@@ -52,42 +50,38 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("¿Qué duda tienes sobre D&D 5e?"):
+if prompt := st.chat_input("Pregunta sobre reglas, hechizos o tu personaje..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Consultando fuentes oficiales..."):
+        with st.spinner("Consultando los manuales antiguos..."):
             try:
-                # 1. Configuración de persistencia (SQLite)
-                config = {"configurable": {"thread_id": st.session_state.thread_id}}
-
-                # 2. Input del Grafo
-                # IMPORTANTE: Pasamos el historial de mensajes de st.session_state
-                # para que el Router pueda contextualizar.
-                input_data = {
-                    "messages": [("human", prompt)],
-                    "sheet_context": st.session_state.sheet_context,
-                    "language": "es"
+                # IMPORTANTE: Enviamos el context de la ficha en cada mensaje 
+                # si tu backend lo espera como parte del initial_state
+                payload = {
+                    "message": prompt,
+                    "session_id": st.session_state.thread_id
                 }
 
-                # 3. Invocación
-                final_state = graph.invoke(input_data, config=config)
+                response = requests.post(BACKEND_URL, json=payload, timeout=60)
 
-                # 4. Procesamiento de Respuesta
-                last_msg = final_state["messages"][-1]
-                raw_text = last_msg[1] if isinstance(last_msg, tuple) else last_msg.content
+                if response.status_code == 200:
+                    data = response.json()
+                    answer = data.get("response", "Sin respuesta.")
+                    agents = data.get("agents_involved", [])
 
-                # Limpiar bloque de pensamiento <think>
-                clean_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL).strip()
-                agent_name = final_state.get("next_step", "Orquestador")
+                    # Limpieza de tokens de pensamiento (DeepSeek/Qwen)
+                    answer = re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', answer, flags=re.DOTALL).strip()
 
-                st.markdown(clean_text)
-                st.caption(f"🛡️ Responde: **{agent_name}**")
+                    st.markdown(answer)
+                    if agents:
+                        st.caption(f"🛡️ Especialistas: {', '.join(agents).upper()}")
 
-                st.session_state.messages.append({"role": "assistant", "content": clean_text})
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+                else:
+                    st.error(f"Error {response.status_code}: {response.text}")
 
             except Exception as e:
-                st.error(f"Error: {e}")
-                logger.error(f"UI Error: {e}", exc_info=True)
+                st.error(f"❌ Error de conexión: {e}")

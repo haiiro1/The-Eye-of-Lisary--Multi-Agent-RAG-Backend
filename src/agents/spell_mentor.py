@@ -1,14 +1,20 @@
 from src.core.base_agent import BaseDnDAgent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableConfig # Importante para trazabilidad
 from src.core.logging_config import logger
+from typing import Optional
 
 class SpellMentor(BaseDnDAgent):
     def _setup_tools(self):
         # El orquestador suministra la información de hechizos (RAG)
         return {}
 
-    def run(self, user_input: str, language: str = "es", extra_info: str = "") -> dict:
+    def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> dict:
+        """
+        Ejecuta el análisis del tejido arcano.
+        Acepta 'config' para propagar los callbacks de Langfuse.
+        """
         logger.info(f"🔮 [SpellMentor] Analizando el tejido arcano...")
 
         prompt = ChatPromptTemplate.from_messages([
@@ -35,14 +41,16 @@ class SpellMentor(BaseDnDAgent):
             {question}""")
         ])
 
+        # Construcción de la cadena
         chain = prompt | self.llm | StrOutputParser()
 
-        # Usamos self.memory_messages inyectado por LangGraph
+        # --- PROPAGACIÓN DEL CONFIG ---
+        # Al pasar el config, el LLM hereda los callbacks de Langfuse
         answer = chain.invoke({
             "extra_info": extra_info,
             "question": user_input,
             "lang": language,
             "chat_history": self.memory_messages
-        })
+        }, config=config)
 
         return {"agent": "SpellMentor", "answer": answer}
