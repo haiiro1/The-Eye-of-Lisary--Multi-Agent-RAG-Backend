@@ -34,22 +34,22 @@ with st.sidebar:
                     full_text = ""
                     for page in doc:
                         full_text += page.get_text()
-                    st.session_state.sheet_context = full_text[:3000] # Un poco más de margen
+                    st.session_state.sheet_context = full_text[:3000]
                 st.success("✅ Ficha cargada.")
         except Exception as e:
             st.error(f"Error al leer el PDF: {e}")
 
     if st.button("🗑️ Reiniciar Chat"):
-        # 1. Limpiamos TODO el session_state de Streamlit
+        # Limpiamos TODO el session_state de Streamlit
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        
-        # 2. Re-inicializamos solo lo necesario con valores nuevos
+
+        # Re-inicializamos solo lo necesario con valores nuevos
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.sheet_context = ""
-        
-        # 3. Forzamos el reinicio total de la app de Streamlit
+
+        # Forzamos el reinicio total de la app de Streamlit
         st.rerun()
 
 # --- Interfaz de Chat ---
@@ -65,7 +65,7 @@ if prompt := st.chat_input("Pregunta sobre reglas, hechizos o tu personaje..."):
     with st.chat_message("assistant"):
         with st.spinner("Consultando los manuales antiguos..."):
             try:
-                # IMPORTANTE: Enviamos el context de la ficha en cada mensaje 
+                # IMPORTANTE: Enviamos el context de la ficha en cada mensaje
                 # si tu backend lo espera como parte del initial_state
                 payload = {
                     "message": prompt,
