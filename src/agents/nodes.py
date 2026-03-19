@@ -1,5 +1,6 @@
 import re
 from src.agents.char_builder import CharBuilder
+from src.agents.chat_expert import ChatExpert
 from src.agents.rules_expert import RulesExpert
 from src.agents.web_omni_expert import WebOmniExpert
 from src.agents.spell_mentor import SpellMentor
@@ -9,7 +10,7 @@ from src.tools.rag_tool import RAGTool
 from src.tools.wiki_tool import WikiTool
 
 # Importaciones nativas de LangChain para compatibilidad total con el Grafo
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableConfig
@@ -32,7 +33,6 @@ def get_human_query(messages):
         content = msg.content if hasattr(msg, 'content') else (msg[1] if isinstance(msg, tuple) else str(msg))
 
         if role == "human":
-            # Pequeña corrección de términos comunes para mejorar el RAG
             return str(content).replace("surje", "surge").strip()
     return "Consulta general de D&D"
 
@@ -43,18 +43,35 @@ def _pop_agent(state: AgentState):
 
 # --- NODOS ESPECIALISTAS ---
 
+def chat_node(state: AgentState, config: RunnableConfig):
+    session_id = config["configurable"].get("thread_id", "default_session")
+    query = get_human_query(state["messages"])
+
+    expert = ChatExpert(
+        session_id=session_id,
+        chat_history=state["messages"],
+        callbacks=config.get("callbacks", [])
+    )
+
+    result = expert.run(user_input=query, language=state.get("language", "es"), config=config)
+
+    return {
+        "messages": [AIMessage(content=f"[CHAT_EXPERT]: {result['answer']}")],
+        "selected_agents": _pop_agent(state)
+    }
+
 def rules_node(state: AgentState, config: RunnableConfig):
     session_id = config["configurable"].get("thread_id", "default_session")
     query = get_human_query(state["messages"])
     context = get_rag_tool().search(f"Regla: {query}")
 
-    # Forzamos los nombres de los argumentos para que Python no se confunda de posición
+    # Se fuerzan los nombres de los argumentos para que Python no se confunda de posición
     expert = RulesExpert(
-        session_id=session_id, 
-        chat_history=state["messages"], 
+        session_id=session_id,
+        chat_history=state["messages"],
         callbacks=config.get("callbacks", [])
     )
-    
+
     result = expert.run(user_input=query, language=state.get("language", "es"), extra_info=context, config=config)
 
     return {
@@ -68,11 +85,11 @@ def spell_node(state: AgentState, config: RunnableConfig):
     context = get_rag_tool().search(f"Hechizo: {query}")
 
     expert = SpellMentor(
-        session_id=session_id, 
-        chat_history=state["messages"], 
+        session_id=session_id,
+        chat_history=state["messages"],
         callbacks=config.get("callbacks", [])
     )
-    
+
     result = expert.run(user_input=query, language=state.get("language", "es"), extra_info=context, config=config)
 
     return {
@@ -99,17 +116,15 @@ def builder_node(state: AgentState, config: RunnableConfig):
     }
 
 def web_node(state: AgentState, config: RunnableConfig):
-    # 1. Extraemos el session_id (thread_id) de la configuración
+
     session_id = config["configurable"].get("thread_id", "default_session")
 
     query = get_human_query(state["messages"])
 
-    # 2. Tavily hace su magia
     context = get_wiki_tool().search(query, config=config)
 
-    # 3. 🎯 EL ARREGLO: Añadimos session_id y chat_history al instanciar
     expert = WebOmniExpert(
-        session_id=session_id, # <--- ¡Esto es lo que faltaba!
+        session_id=session_id,
         chat_history=state["messages"],
         callbacks=config.get("callbacks", [])
     )
@@ -130,14 +145,13 @@ def web_node(state: AgentState, config: RunnableConfig):
 
 def aggregator_node(state: AgentState, config: RunnableConfig):
     try:
-        # 1. Usamos un modelo "Instruct" (Llama 3 o similar) para que obedezca el idioma
+
         llm = LLMFactory.get_model(is_reasoning=False, callbacks=config.get("callbacks", []))
 
-        # 2. Detectamos el idioma del último mensaje HUMANO
-        # Esto asegura que si el usuario cambió de idioma a mitad del chat, el Ojo se adapte.
+        # Detectamos el idioma del último mensaje HUMANO esto asegura que si el usuario cambió de idioma a mitad del chat, el Ojo se adapte.
         user_query = get_human_query(state["messages"])
 
-        # 3. Limpiamos el historial de los "pensamientos" ingleses de los expertos
+        # Limpiamos el historial de los "pensamientos" ingleses de los expertos
         clean_history = []
         for msg in state["messages"]:
             content = msg.content if hasattr(msg, 'content') else str(msg)
@@ -178,5 +192,5 @@ def aggregator_node(state: AgentState, config: RunnableConfig):
             "selected_agents": []
         }
     except Exception as e:
-        # Fallback por si el error de OpenTelemetry o de tokens persiste
+        # por si el error de OpenTelemetry o de tokens persiste
         return {"messages": [AIMessage(content="El Ojo está nublado. Intenta preguntar de nuevo.")], "selected_agents": []}

@@ -40,9 +40,16 @@ with st.sidebar:
             st.error(f"Error al leer el PDF: {e}")
 
     if st.button("🗑️ Reiniciar Chat"):
+        # 1. Limpiamos TODO el session_state de Streamlit
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        
+        # 2. Re-inicializamos solo lo necesario con valores nuevos
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.sheet_context = ""
+        
+        # 3. Forzamos el reinicio total de la app de Streamlit
         st.rerun()
 
 # --- Interfaz de Chat ---

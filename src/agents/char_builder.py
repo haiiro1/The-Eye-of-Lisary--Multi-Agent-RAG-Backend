@@ -1,13 +1,13 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from src.core.base_agent import BaseDnDAgent
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableConfig # Importante para trazabilidad
+from langchain_core.runnables import RunnableConfig
 from src.core.logging_config import logger
 from typing import Optional
 
 class CharBuilder(BaseDnDAgent):
     def _setup_tools(self):
-        return {} # Las herramientas las gestiona el orquestador/nodo
+        return {}
 
     def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> dict:
         """
@@ -47,7 +47,7 @@ class CharBuilder(BaseDnDAgent):
         chain = prompt | self.llm | StrOutputParser()
 
         # --- PROPAGACIÓN DEL CONFIG ---
-        # Pasamos el config para que Langfuse capture el intercambio de tokens
+        # se pasa la config para que Langfuse capture el intercambio de tokens
         # y el tiempo de respuesta de este agente específico.
         answer = chain.invoke({
             "extra_info": extra_info,
