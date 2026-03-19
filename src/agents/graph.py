@@ -18,31 +18,26 @@ from src.agents.nodes import (
 def router_node(state: AgentState, config: RunnableConfig):
     """
     Analiza la entrada e inyecta callbacks.
-    ESTA VERSIÓN BLOQUEA EL BUCLE INFINITO.
+    Mantiene la lógica de bloqueo de bucle para múltiples especialistas.
     """
-    # Si ya hay agentes en la cola, NO se clasifica,se dejan que fluyan.
+    # Si ya hay agentes en la cola, NO se clasifica, se dejan que fluyan.
     if state.get("selected_agents") and len(state["selected_agents"]) > 0:
         return {}
 
+    # Verificamos el último mensaje para evitar re-clasificar respuestas de expertos
     last_msg = state["messages"][-1]
-    # Extrae el contenido sin importar si es tupla o mensaje de LangChain
     content = last_msg[1] if isinstance(last_msg, tuple) else last_msg.content
 
-
-    # Si el mensaje contiene etiquetas de expertos, significa que ya paso por ahí.
+    # Etiquetas de control para detectar si el flujo ya pasó por un experto
     expert_tags = ["[RULES_EXPERT]", "[SPELL_MENTOR]", "[CHAR_BUILDER]", "[WEB_EXPERT]", "[CHAT_EXPERT]"]
 
-    if any(tag in content for tag in expert_tags):
-        print("DEBUG: Detectado mensaje de experto. Limpiando cola para ir al agregador.")
+    if any(tag in str(content) for tag in expert_tags):
         return {"selected_agents": []}
 
-    # Si es un mensaje de un humano, clasificamos
+    # Clasificación inicial para mensajes humanos
     callbacks = config.get("callbacks", [])
     router = DnDRouter(callbacks=callbacks)
-
-    # Se usa la función de ayuda que para obtener el texto limpio
     text = get_human_query(state["messages"])
-
     result = router.classify_intent(text)
 
     return {
@@ -50,25 +45,18 @@ def router_node(state: AgentState, config: RunnableConfig):
     }
 
 def orchestrator(state: AgentState):
-    # Obtenemos la lista actual de agentes pendientes
+    """Orquestador que decide el siguiente nodo basado en la cola selected_agents."""
     pending = state.get("selected_agents", [])
 
-    print(f"\n--- DEBUG ORQUESTADOR ---")
-    print(f"Cola recibida: {pending}")
-
     if not pending:
-        print("Resultado: Yendo a AGGREGATOR (Cola vacía)")
         return "aggregator"
 
     next_agent = str(pending[0]).lower().strip()
 
-    print(f"Agente normalizado: '{next_agent}'")
-
+    # Mapeo de intención a nombre de nodo
     if next_agent in ["web", "builder", "rules", "spells", "chat"]:
-        print(f"Resultado: Yendo a NODO '{next_agent}'")
         return next_agent
 
-    print(f"Resultado: Yendo a AGGREGATOR (No reconocido)")
     return "aggregator"
 
 # --- DISEÑO DEL FLUJO ---
@@ -85,7 +73,6 @@ workflow.add_node("aggregator", aggregator_node)
 
 workflow.set_entry_point("router_node")
 
-# Bordes condicionales y fijos
 workflow.add_conditional_edges(
     "router_node",
     orchestrator,
@@ -99,14 +86,15 @@ workflow.add_conditional_edges(
     }
 )
 
-# El ciclo vuelve al router para consumir el siguiente agente de la lista
+# Si es un saludo, el experto responde y termina el flujo.
+workflow.add_edge("chat", END)
+
+# Los especialistas técnicos sí vuelven al router por si hay más tareas
 workflow.add_edge("web", "router_node")
-workflow.add_edge("chat", "router_node")
 workflow.add_edge("builder", "router_node")
 workflow.add_edge("rules", "router_node")
 workflow.add_edge("spells", "router_node")
+
 workflow.add_edge("aggregator", END)
 
-# --- EXPORTACIÓN ---
-# Exportamos el objeto workflow para compilarlo con el checkpointer activo en la ejecución.
 agent_workflow = workflow

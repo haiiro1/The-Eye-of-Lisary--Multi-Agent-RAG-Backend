@@ -11749,3 +11749,96 @@ Traceback (most recent call last):
   File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
     self._current_context.reset(token)
 ValueError: <Token var=<ContextVar name='current_context' default={} at 0x7fdd8bc23b50> at 0x7fdd38c9c6c0> was created in a different Context
+2026-03-19 20:23:16,780 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido y la conexión DB se ha cerrado.
+2026-03-19 20:55:25,131 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 20:55:27,510 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 20:59:21,946 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 21:05:43,050 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 21:05:46,316 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 21:11:05,213 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 21:11:05,317 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 21:11:21,545 - opentelemetry.context - ERROR - Failed to detach context
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/__init__.py", line 155, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x786c0adbfce0> at 0x786bd8614780> was created in a different Context
+2026-03-19 21:11:49,103 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 21:11:49,213 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 21:11:55,081 - opentelemetry.context - ERROR - Failed to detach context
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/__init__.py", line 155, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x786c0adbfce0> at 0x786bd86ccc00> was created in a different Context
+2026-03-19 21:17:50,481 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 21:23:09,909 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 21:23:13,179 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 21:35:15,636 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 21:35:15,736 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 21:35:20,637 - opentelemetry.context - ERROR - Failed to detach context
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/__init__.py", line 155, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x774af25f3c90> at 0x774abaf68c00> was created in a different Context
+2026-03-19 21:35:26,861 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 21:35:26,950 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 21:35:30,558 - opentelemetry.exporter.otlp.proto.http.trace_exporter - ERROR - Failed to export span batch due to timeout, max retries or shutdown.
+2026-03-19 21:35:30,855 - opentelemetry.context - ERROR - Failed to detach context
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/__init__.py", line 155, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x774af25f3c90> at 0x774abaf787c0> was created in a different Context
+2026-03-19 21:35:45,587 - opentelemetry.exporter.otlp.proto.http.trace_exporter - ERROR - Failed to export span batch due to timeout, max retries or shutdown.
+2026-03-19 21:43:50,756 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 21:49:42,740 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 21:49:45,627 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 21:50:50,825 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 21:50:50,926 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 21:50:56,694 - opentelemetry.context - ERROR - Failed to detach context
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/__init__.py", line 155, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x7db270f4fec0> at 0x7db240342a80> was created in a different Context
+2026-03-19 21:51:05,780 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 21:51:05,871 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 21:51:09,909 - opentelemetry.context - ERROR - Failed to detach context
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/__init__.py", line 155, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "/usr/local/lib/python3.12/site-packages/opentelemetry/context/contextvars_context.py", line 53, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x7db270f4fec0> at 0x7db24025af00> was created in a different Context
+2026-03-19 21:55:14,066 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 22:00:21,884 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 22:00:24,841 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 22:01:29,485 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 22:01:29,589 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 22:04:47,813 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 22:10:20,745 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 22:10:23,777 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 22:10:32,397 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 22:10:32,499 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 22:10:54,132 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 22:10:54,223 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 22:17:00,565 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 22:22:59,057 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 22:23:02,029 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 22:27:25,407 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 22:27:25,506 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...
+2026-03-19 22:35:46,975 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 22:41:15,015 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 22:41:18,103 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 22:46:35,098 - OjoDeLisary - INFO - 💤 El Ojo de Lisary se ha dormido.
+2026-03-19 22:51:56,740 - OjoDeLisary - INFO - 👁️ El Ojo de Lisary ha despertado. Sistema de logs iniciado.
+2026-03-19 22:51:59,388 - OjoDeLisary - INFO - ✅ El Ojo de Lisary ha despertado.
+2026-03-19 22:53:06,820 - OjoDeLisary - INFO - 👋 Saludo detectado: saltando clasificación por IA
+2026-03-19 22:53:06,949 - OjoDeLisary - INFO - 💬 [ChatExpert] Respondiendo a interacción social...

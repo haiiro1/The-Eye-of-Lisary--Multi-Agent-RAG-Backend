@@ -5,19 +5,22 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN pip install --no-cache-dir streamlit requests pymupdf
+# Instalamos primero las dependencias base y forzamos la actualización de pip
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir streamlit requests pymupdf protobuf
 
-# Creamos un usuario para no correr como root
+# Creamos un usuario para seguridad
 RUN adduser --disabled-password appuser
 USER appuser
 
+# Copiamos el archivo de la interfaz
 COPY Test/gui_test.py .
 
 EXPOSE 8501
 
-# Configuración de Streamlit para producción
+# Eliminamos el flag conflictivo '--client.toolbarMode' del CMD
+# y lo manejamos de forma más estándar para evitar el error de AtributeError
 CMD ["streamlit", "run", "gui_test.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
-     "--client.toolbarMode=hidden", \
      "--browser.gatherUsageStats=false"]
