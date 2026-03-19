@@ -54,8 +54,8 @@ class DnDRouter:
             # Mapeo final
             final_intents = []
             for tag in found_tags:
-                if tag != "CHAT":
-                    final_intents.append(tag.lower())
+                # if tag != "CHAT":
+                final_intents.append(tag.lower())
 
             # Eliminamos duplicados
             final_intents = list(set(final_intents))
