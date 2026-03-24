@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
@@ -79,7 +80,7 @@ async def response_generator(request: ChatRequest):
 
 @app.get("/")
 async def root():
-    return {"status": "Online", "system": "The Eye of Lisary", "pdf_engine": "PyMuPDF (fitz)"}
+    return {"status": "Online", "system": "The Eye of Lisary"}
 
 @app.get("/health")
 async def health_check():
@@ -90,6 +91,7 @@ async def health_check():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    """Endpoint de chat con soporte de Streaming."""
     if not app_graph:
         raise HTTPException(status_code=503, detail="Motor no inicializado.")
 

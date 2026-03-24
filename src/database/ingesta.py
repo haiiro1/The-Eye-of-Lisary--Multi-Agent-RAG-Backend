@@ -19,11 +19,11 @@ def procesar_manuales_por_pagina():
 
     # 2. Inicializar el motor vectorial y el splitter
     vector_store = VectorEngine.get_vector_store()
-    
+
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150, 
-        separators=["\n\n", "\n", ". ", " ", ""]
+        chunk_size=800,
+        chunk_overlap=120,
+        separators=["\n### ", "\n## ", "\n# ", "\n\n", "\n", " "]
     )
 
     # Palabras clave para omitir contenido no técnico
@@ -46,10 +46,10 @@ def procesar_manuales_por_pagina():
                 for i, pagina in enumerate(doc):
                     # Extracción y limpieza de caracteres nulos
                     texto_raw = pagina.get_text("text")
-                    texto_pagina = texto_raw.replace('\x00', '').strip()
+                    texto_limpio = limpiar_texto(texto_raw)
 
                     # Filtro 1: Páginas con contenido insuficiente
-                    if len(texto_pagina) < 100: 
+                    if len(texto_pagina) < 100:
                         continue
 
                     # Filtro 2: Saltar páginas de metadatos o legales
