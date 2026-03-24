@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-import json
 import uuid
 import re
 import os
@@ -12,13 +11,19 @@ st.set_page_config(page_title="Ojo de Lisary - UI Test", page_icon="👁️", la
 RAW_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 BASE_URL = RAW_URL.replace('/chat', '').rstrip('/') # Limpia barras finales y el path /chat
 
-if "messages" not in st.session_state: st.session_state.messages = []
-if "thread_id" not in st.session_state: st.session_state.thread_id = str(uuid.uuid4())
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
+if "sheet_context" not in st.session_state:
+    st.session_state.sheet_context = ""
 
-st.title("👁️ Ojo de Lisary Assistant")
+st.title("👁️ Ojo de Lisary: D&D 5e Assistant")
 
 with st.sidebar:
     st.header("⚙️ Configuración")
+    st.info(f"ID de Sesión: `{st.session_state.thread_id[:8]}`")
+
     uploaded_file = st.file_uploader("Sube tu ficha (PDF)", type="pdf")
     if uploaded_file:
         try:
@@ -42,14 +47,15 @@ with st.sidebar:
         st.session_state.clear() # Forma más limpia de resetear
         st.rerun()
 
-# Mostrar historial
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
+# --- Interfaz de Chat ---
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-# Chat Input
-if prompt := st.chat_input("¿Qué deseas consultar?"):
+if prompt := st.chat_input("Pregunta sobre reglas, hechizos o tu personaje..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
     with st.chat_message("assistant"):
         with st.spinner("Consultando los manuales antiguos..."):
