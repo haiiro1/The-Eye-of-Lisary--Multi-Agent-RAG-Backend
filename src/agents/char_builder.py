@@ -10,10 +10,6 @@ class CharBuilder(BaseDnDAgent):
         return {}
 
     def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> dict:
-        """
-        Ejecuta el análisis de construcción y progresión de personajes.
-        Acepta 'config' para propagar los callbacks de Langfuse hacia el LLM.
-        """
         logger.info(f"🏗️ [CharBuilder] Analizando optimización y progresión...")
 
         prompt = ChatPromptTemplate.from_messages([
@@ -23,7 +19,7 @@ class CharBuilder(BaseDnDAgent):
             Analizar la solicitud del usuario comparándola con su ficha actual y las reglas oficiales.
 
             CAPACIDADES ESPECIALES:
-            1. AUDITORÍA: Si detectas inconsistencias en la ficha (ej. bonificadores mal calculados), señálalo cortésmente.
+            "1. AUDITORÍA: Analiza los 'DATOS DE LA FICHA ACTUAL'. Si la CA, HP o los bonificadores de salvación (marcados con '*') no coinciden con lo esperado para su raza y clase según los manuales, avisa al aventurero."
             2. OPTIMIZACIÓN: Sugiere dotes, dotes de linaje o distribuciones de conjuros que maximicen el potencial del personaje.
             3. SUBIDA DE NIVEL: Si el usuario menciona subir de nivel, detalla EXACTAMENTE qué cambia:
                - Incremento de Vida (HP).
@@ -43,12 +39,8 @@ class CharBuilder(BaseDnDAgent):
             {question}""")
         ])
 
-        # Definición de la cadena
         chain = prompt | self.llm | StrOutputParser()
 
-        # --- PROPAGACIÓN DEL CONFIG ---
-        # se pasa la config para que Langfuse capture el intercambio de tokens
-        # y el tiempo de respuesta de este agente específico.
         answer = chain.invoke({
             "extra_info": extra_info,
             "question": user_input,

@@ -2,22 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
 RUN pip install --no-cache-dir streamlit requests pymupdf
-
-# Creamos un usuario para no correr como root
-RUN adduser --disabled-password appuser
-USER appuser
 
 COPY Test/gui_test.py .
 
 EXPOSE 8501
 
-# Configuración de Streamlit para producción
-CMD ["streamlit", "run", "gui_test.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0", \
-     "--client.toolbarMode=hidden", \
-     "--browser.gatherUsageStats=false"]
+CMD ["streamlit", "run", "gui_test.py", "--server.port=8501", "--server.address=0.0.0.0"]

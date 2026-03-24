@@ -8,6 +8,8 @@ from src.core.factory import LLMFactory
 from src.core.state import AgentState
 from src.tools.rag_tool import RAGTool
 from src.tools.wiki_tool import WikiTool
+from src.core.logging_config import logger
+
 
 # Importaciones nativas de LangChain para compatibilidad total con el Grafo
 from langchain_core.messages import AIMessage
@@ -100,7 +102,14 @@ def spell_node(state: AgentState, config: RunnableConfig):
 def builder_node(state: AgentState, config: RunnableConfig):
     session_id = config["configurable"].get("thread_id", "default_session")
     query = get_human_query(state["messages"])
-    context = get_rag_tool().search(f"Creación/Mejora: {query}")
+
+
+    rag_context = get_rag_tool().search(f"Creación/Mejora: {query}")
+
+
+    sheet_info = state.get("sheet_context", "No hay ficha vinculada.")
+
+    full_context = str(rag_context) + "\n\nDATOS_FICHA:\n" + str(sheet_info)
 
     expert = CharBuilder(
         session_id=session_id,
@@ -108,7 +117,12 @@ def builder_node(state: AgentState, config: RunnableConfig):
         callbacks=config.get("callbacks", [])
     )
 
-    result = expert.run(user_input=query, language=state.get("language", "es"), extra_info=context, config=config)
+    result = expert.run(
+        user_input=query,
+        language=state.get("language", "es"),
+        extra_info=full_context,
+        config=config
+    )
 
     return {
         "messages": [AIMessage(content=f"[CHAR_BUILDER]: {result['answer']}")],
@@ -145,52 +159,51 @@ def web_node(state: AgentState, config: RunnableConfig):
 
 def aggregator_node(state: AgentState, config: RunnableConfig):
     try:
-
         llm = LLMFactory.get_model(is_reasoning=False, callbacks=config.get("callbacks", []))
-
-        # Detectamos el idioma del último mensaje HUMANO esto asegura que si el usuario cambió de idioma a mitad del chat, el Ojo se adapte.
         user_query = get_human_query(state["messages"])
 
-        # Limpiamos el historial de los "pensamientos" ingleses de los expertos
+        # Recuperamos el idioma detectado originalmente por el sistema como respaldo
+        fallback_lang = state.get("language", "es")
+
         clean_history = []
         for msg in state["messages"]:
+            # ... (tu lógica de limpieza <think> está perfecta)
             content = msg.content if hasattr(msg, 'content') else str(msg)
-            # Eliminamos los bloques <think> para que no contaminen el idioma final
-            clean_content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
-            if clean_content:
-                clean_history.append(clean_content)
+            # SUGERENCIA: Eliminar también los prefijos [AGENT_NAME] para que el agregador 
+            # no crea que debe hablar de forma técnica.
+            clean_content = re.sub(r'\[.*?\]:', '', content).strip()
+            if clean_content: clean_history.append(clean_content)
 
         prompt = ChatPromptTemplate.from_template("""
             Eres el Ojo de Lisary, un oráculo místico de D&D 5e.
-            Tu misión es redactar la respuesta final basada en las visiones de tus especialistas.
+            Redacta una respuesta coherente y mística usando las visiones de tus especialistas.
+            NO uses etiquetas <think>.
 
-            REGLAS CRÍTICAS DE IDIOMA:
-            - Debes responder estrictamente en el MISMO IDIOMA que el usuario utilizó en su pregunta.
-            - Si el usuario preguntó en español, responde en español.
-            - Si el usuario preguntó en inglés, responde en inglés.
-            - NO uses etiquetas <think>.
-            - Mantén el tono místico y usa negritas para términos de reglas.
+            REGLA DE ORO:
+            Responde en el idioma de la pregunta. Si no estás seguro, usa: {idioma_respaldo}.
 
-            HISTORIAL LIMPIO DE VISIONES:
+            VISIONES:
             {clean_history}
 
-            PREGUNTA ORIGINAL DEL USUARIO:
+            PREGUNTA:
             {user_query}
 
-            RESPUESTA FINAL (En el idioma del usuario):
+            RESPUESTA DEL ORÁCULO:
         """)
 
         chain = prompt | llm | StrOutputParser()
 
+        # Invocamos pasando el idioma de respaldo
         response = chain.invoke({
             "clean_history": "\n".join(clean_history),
-            "user_query": user_query
+            "user_query": user_query,
+            "idioma_respaldo": fallback_lang
         }, config=config)
 
-        return {
-            "messages": [AIMessage(content=response)],
-            "selected_agents": []
-        }
+        # Limpieza final por seguridad
+        final_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+
+        return {"messages": [AIMessage(content=final_response)], "selected_agents": []}
     except Exception as e:
-        # por si el error de OpenTelemetry o de tokens persiste
-        return {"messages": [AIMessage(content="El Ojo está nublado. Intenta preguntar de nuevo.")], "selected_agents": []}
+        logger.error(f"Error en agregador: {e}")
+        return {"messages": [AIMessage(content="El Ojo está nublado...")], "selected_agents": []}

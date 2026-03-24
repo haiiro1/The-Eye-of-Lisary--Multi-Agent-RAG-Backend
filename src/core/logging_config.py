@@ -3,10 +3,9 @@ import sys
 import os
 
 def setup_logging():
-    # Aseguramos que la carpeta data exista para evitar errores al crear el .log
-    os.makedirs("data", exist_ok=True) # evitas que la aplicación falle si intentas iniciar el logger en un contenedor o servidor
+    # Aseguramos la carpeta para el .log y la DB de persistencia
+    os.makedirs("data", exist_ok=True)
 
-    # Formato: Hora - Nombre - Nivel de importancia - Mensaje
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     logging.basicConfig(
@@ -14,7 +13,7 @@ def setup_logging():
         format=log_format,
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler("data/ojo_de_lisary.log", encoding="utf-8") #encoding para caracteres D&D
+            logging.FileHandler("data/ojo_de_lisary.log", encoding="utf-8")
         ]
     )
 

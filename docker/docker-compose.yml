@@ -10,11 +10,16 @@ services:
       - ../.env
     volumes:
       - ../data:/app/data
-      - ../src:/app/src # Solo para desarrollo, permite Hot Reload
+      - ../src:/app/src # Útil para que los cambios en agents/ o tools/ se vean sin reiniciar
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
-          memory: 2G # Los modelos de embedding consumen RAM
+          memory: 2G
     restart: unless-stopped
 
   frontend:
@@ -25,11 +30,10 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - BACKEND_URL=http://backend:8000/chat
-      - UPLOAD_URL=http://backend:8000/upload_sheet
+      - BACKEND_URL=http://backend:8000
     depends_on:
       backend:
-        condition: service_healthy # Espera a que el healthcheck del backend pase
+        condition: service_healthy
     deploy:
       resources:
         limits:
