@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
+
 import logging
 
 from src.core.logging_config import logger
@@ -13,6 +14,7 @@ from src.database.persistence import get_graph_checkpointer
 from src.agents.graph import agent_workflow
 from src.core.callbacks import get_langfuse_callback
 from src.tools.sheet_manager import SheetManager
+from langchain_core.messages import HumanMessage, AIMessage
 
 # --- CONFIGURACIÓN DE DIRECTORIOS ---
 os.makedirs("data/manuales", exist_ok=True)
@@ -96,7 +98,7 @@ async def chat(request: ChatRequest):
     try:
         handler = get_langfuse_callback(session_id=request.session_id)
         initial_state = {
-            "messages": [("human", request.message)],
+            "messages": [HumanMessage(content=request.message)], # <--- CAMBIA LA TUPLA POR ESTO
             "sheet_context": fichas_personajes.get(request.session_id, ""),
             "language": "es",
             "selected_agents": []

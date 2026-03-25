@@ -1,34 +1,25 @@
+from typing import Dict, Any, Optional
 from src.core.base_agent import BaseDnDAgent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableConfig # <--- Importante
+from langchain_core.runnables import RunnableConfig
+from src.core.callbacks import get_langfuse_client
 from src.core.logging_config import logger
-from typing import Optional
 
 class RulesExpert(BaseDnDAgent):
     def _setup_tools(self):
-        # El orquestador suministra la información de manuales (RAG)
+        # La información técnica (RAG) se recibe externamente vía extra_info
         return {}
 
-    def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> dict:
-        """
-        Ejecuta el análisis de reglas.
-        Ahora acepta 'config' para que Langfuse registre la generación del LLM.
-        """
+    def run(self, user_input: str, language: str = "es", extra_info: str = "", config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
         logger.info(f"⚖️ [RulesExpert] Analizando mecánicas y reglas...")
 
+        client = get_langfuse_client()
+        prompt_res = client.get_prompt("dnd-rules-expert")
+
+        # Estructura simétrica: Identidad (Langfuse) + Memoria + Pregunta (Código)
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """Eres el 'Custodio de las Leyes', el experto supremo en las reglas de D&D 5e.
-
-            TU MISIÓN:
-            Interpretar las reglas de forma precisa, clara y técnica.
-
-            DIRECTRICES:
-            1. PRIORIDAD: Usa los datos de manuales proporcionados por el orquestador.
-            2. CLARIDAD: Explica no solo el 'qué', sino el 'cómo' se aplica la regla (ej. tipos de tiradas, modificadores).
-            3. IMPARCIALIDAD: Eres un árbitro. Si una regla queda a discreción del DM (Dungeon Master), menciónalo.
-            4. IDIOMA: Responde en {lang}.
-            """),
+            ("system", prompt_res.get_langchain_prompt()),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", """CONTEXTO TÉCNICO DE MANUALES:
             {extra_info}
@@ -37,11 +28,8 @@ class RulesExpert(BaseDnDAgent):
             {question}""")
         ])
 
-        # Construimos la cadena
         chain = prompt | self.llm | StrOutputParser()
 
-        # Al pasar 'config' al invoke, LangChain busca automáticamente
-        # los callbacks de Langfuse que inyectamos en main.py
         answer = chain.invoke({
             "extra_info": extra_info,
             "question": user_input,

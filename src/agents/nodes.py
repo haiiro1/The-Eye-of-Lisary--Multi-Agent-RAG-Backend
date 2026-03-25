@@ -9,6 +9,7 @@ from src.core.state import AgentState
 from src.tools.rag_tool import RAGTool
 from src.tools.wiki_tool import WikiTool
 from src.core.logging_config import logger
+from src.core.callbacks import get_langfuse_client
 
 
 # Importaciones nativas de LangChain para compatibilidad total con el Grafo
@@ -28,14 +29,27 @@ def get_wiki_tool():
     return WikiTool()
 
 def get_human_query(messages):
-    """Busca el último mensaje enviado por el humano para evitar buscar pensamientos de IA."""
+    """Busca el último mensaje del humano de forma segura para evitar errores de índices."""
     for msg in reversed(messages):
-        # Manejo compatible con BaseMessage de LangChain y tuplas antiguas
-        role = msg.type if hasattr(msg, 'type') else (msg[0] if isinstance(msg, tuple) else "")
-        content = msg.content if hasattr(msg, 'content') else (msg[1] if isinstance(msg, tuple) else str(msg))
+        role = ""
+        content = ""
+
+        # 1. Caso: Objeto de LangChain (HumanMessage, AIMessage)
+        if hasattr(msg, 'type'):
+            role = msg.type
+            content = msg.content
+        # 2. Caso: Diccionario (Aquí es donde fallaba tu código)
+        elif isinstance(msg, dict):
+            role = msg.get("type") or msg.get("role", "")
+            content = msg.get("content", "")
+        # 3. Caso: Tupla antigua ("human", "hola")
+        elif isinstance(msg, (tuple, list)) and len(msg) >= 2:
+            role = msg[0]
+            content = msg[1]
 
         if role == "human":
             return str(content).replace("surje", "surge").strip()
+
     return "Consulta general de D&D"
 
 def _pop_agent(state: AgentState):
@@ -84,7 +98,7 @@ def rules_node(state: AgentState, config: RunnableConfig):
 def spell_node(state: AgentState, config: RunnableConfig):
     session_id = config["configurable"].get("thread_id", "default_session")
     query = get_human_query(state["messages"])
-    context = get_rag_tool().search(f"Hechizo: {query}")
+    context = get_rag_tool().search(query)
 
     expert = SpellMentor(
         session_id=session_id,
@@ -159,51 +173,45 @@ def web_node(state: AgentState, config: RunnableConfig):
 
 def aggregator_node(state: AgentState, config: RunnableConfig):
     try:
+        client = get_langfuse_client()
+        prompt_res = client.get_prompt("dnd-aggregator")
+
         llm = LLMFactory.get_model(is_reasoning=False, callbacks=config.get("callbacks", []))
         user_query = get_human_query(state["messages"])
-
-        # Recuperamos el idioma detectado originalmente por el sistema como respaldo
         fallback_lang = state.get("language", "es")
 
         clean_history = []
+        # Error corregido: iterar sobre objetos de mensaje de forma segura
         for msg in state["messages"]:
-            # ... (tu lógica de limpieza <think> está perfecta)
-            content = msg.content if hasattr(msg, 'content') else str(msg)
-            # SUGERENCIA: Eliminar también los prefijos [AGENT_NAME] para que el agregador 
-            # no crea que debe hablar de forma técnica.
-            clean_content = re.sub(r'\[.*?\]:', '', content).strip()
-            if clean_content: clean_history.append(clean_content)
+            # Extraemos el contenido sin importar si es objeto o dict
+            if hasattr(msg, 'content'):
+                content = msg.content
+            elif isinstance(msg, dict):
+                content = msg.get("content", "")
+            else:
+                content = str(msg)
 
-        prompt = ChatPromptTemplate.from_template("""
-            Eres el Ojo de Lisary, un oráculo místico de D&D 5e.
-            Redacta una respuesta coherente y mística usando las visiones de tus especialistas.
-            NO uses etiquetas <think>.
+            # Limpieza de ruido técnico
+            content_clean = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+            content_clean = re.sub(r'\[.*?\]:', '', content_clean).strip()
 
-            REGLA DE ORO:
-            Responde en el idioma de la pregunta. Si no estás seguro, usa: {idioma_respaldo}.
+            # Solo agregamos si no es la pregunta original y tiene contenido
+            if content_clean and content_clean not in user_query:
+                clean_history.append(content_clean)
 
-            VISIONES:
-            {clean_history}
+        prompt_tpl = ChatPromptTemplate.from_template(prompt_res.get_langchain_prompt())
+        chain = prompt_tpl | llm | StrOutputParser()
 
-            PREGUNTA:
-            {user_query}
-
-            RESPUESTA DEL ORÁCULO:
-        """)
-
-        chain = prompt | llm | StrOutputParser()
-
-        # Invocamos pasando el idioma de respaldo
         response = chain.invoke({
             "clean_history": "\n".join(clean_history),
             "user_query": user_query,
             "idioma_respaldo": fallback_lang
         }, config=config)
 
-        # Limpieza final por seguridad
         final_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
 
         return {"messages": [AIMessage(content=final_response)], "selected_agents": []}
+
     except Exception as e:
-        logger.error(f"Error en agregador: {e}")
-        return {"messages": [AIMessage(content="El Ojo está nublado...")], "selected_agents": []}
+        logger.error(f"❌ Error en agregador: {e}")
+        return {"messages": [AIMessage(content="El Ojo está nublado... (Error de índices)")], "selected_agents": []}
