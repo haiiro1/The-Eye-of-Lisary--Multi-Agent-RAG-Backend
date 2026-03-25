@@ -1,36 +1,41 @@
-# Entornos virtuales
+# --- Entornos Virtuales y Dependencias ---
 venv/
-.venv/
+.env/
 env/
 bin/
 include/
 lib/
 share/
+lib64/
+pyvenv.cfg
 
-# Variables de entorno (Credenciales sensibles)
+# --- Variables de Entorno (CRÍTICO: Credenciales) ---
 .env
+.env.local
+.env.*.local
 
-# Python (Archivos temporales y de caché)
+# --- Python (Caché y Temporales) ---
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .mypy_cache/
+.ipynb_checkpoints/
+*.log
 
-# Datos y Base de Datos Vectorial
-# Ignoramos la base de datos persistente para que no pese en el repo
+# --- Datos y Persistencia (Específico de Lisary) ---
+# Ignoramos la base de datos vectorial generada
 data/vector_store/
-# Opcional: Ignorar los manuales si no quieres subirlos por copyright
+# Ignoramos los manuales oficiales para evitar problemas de Copyright
 data/manuales/*.pdf
+# Ignoramos la DB de historial y sus archivos temporales de SQLite
+data/*.db
+data/*.db-wal
+data/*.db-shm
 
-# IDEs (VS Code, PyCharm)
+# --- IDEs y Sistema Operativo ---
 .vscode/
 .idea/
-data/ojo_de_lisary.log
-data/chat_history.db-wal
-data/chat_history.db-shm
-data/ojo_de_lisary.log
-data/ojo_de_lisary.log
-data/ojo_de_lisary.log
-data/ojo_de_lisary.log
-data/ojo_de_lisary.log
+.DS_Store
+Thumbs.db
+

@@ -1,86 +1,76 @@
 # 👁️ The Eye of Lisary: Multi-Agent RAG Backend
-"Un artefacto digital de sabiduría infinita para directores de juego y arquitectos de héroes."  Este repositorio contiene exclusivamente el Core Backend del sistema. Está diseñado como una API robusta y agnóstica que utiliza LangChain y Fireworks AI para procesar la lógica de Dungeons & Dragons 5e.
+"Un artefacto digital de sabiduría infinita para directores de juego y arquitectos de héroes."
 
-## 🏗️ Arquitectura General (Backend-Only)
-El sistema opera bajo un modelo de Micro-Agentes Especialistas orquestados por un clasificador de intenciones (Router). La arquitectura está totalmente desacoplada para permitir una integración flexible con cualquier frontend (Web, Discord o Móvil).
+Este repositorio contiene exclusivamente el **Core Backend** del sistema. Está diseñado como una API robusta y agnóstica que utiliza **LangGraph**, **LangChain** y **Fireworks AI** para procesar la lógica de Dungeons & Dragons 5e.
 
-## 📂 Estructura Detallada de Carpetas
+## 🏗️ Arquitectura General
+El sistema opera bajo un modelo de **Micro-Agentes Especialistas** orquestados por un clasificador de intenciones (Router). La arquitectura está totalmente desacoplada para permitir una integración flexible con cualquier frontend (Web, Discord o Móvil).
 
-``` Plaintext
-the-eye-of-lisary-backend/
-├── data/
-│   ├── manuales/           # PDFs Oficiales (PHB, DMG, Tasha, Xanathar)
-│   └── vector_store/       # Base de datos vectorial persistent(ChromaDB)
-├── src/
-│   ├── main.py             # Entry point: FastAPI, Middleware y CORS
-│   ├── core/               # LA COLUMNA VERTEBRAL (Singletons y Abstracciones)
-│   │   ├── config.py       # Pydantic Settings para .env y constantes
-│   │   ├── factory.py      # Generador de modelos Fireworks (Llama-3 8B/70B)
-│   │   ├── memory.py       # Manejo de hilos de conversación y persistencia de sesión
-│   │   └── base_agent.py   # Clase abstracta (Interface) para estandarizar especialistas
-│   ├── agents/             # LOS ESPECIALISTAS (Capa de Razonamiento)
-│   │   ├── router.py       # El "Ojo" Admin: Clasifica la consulta y deriva al experto
-│   │   ├── rules_expert.py # Especialista en RAW, Lógica Física y Problemáticas de mesa
-│   │   ├── char_builder.py # Experto en Fichas, Subclases y progresión de niveles
-│   │   └── spell_mentor.py # Mentor de magia, combinaciones y optimización de conjuros
-│   ├── tools/              # LAS ACCIONES (Capa de Ejecución)
-│   │   ├── rag_tool.py     # Lógica de consulta a la Vector DB (Chroma)
-│   │   ├── wiki_tool.py    # Conector con Tavily para Wikidot y DanWiki
-│   │   └── sheet_manager.py# Motor de cálculo de estadísticas y guardado de JSON
-│   └── database/           # INFRAESTRUCTURA DE DATOS
-│       ├── vector_engine.py# Configuración de Embeddings (HuggingFace locales)
-│       └── ingesta.py      # Script de segmentación (Chunking) y carga de manuales
-├── .env.example            # Plantilla de variables de entorno
-├── requirements.txt        # Dependencias de Python
-└── README.md
-```
+### Capas del Sistema:
+1.  **Capa Core**: Gestiona la fábrica de modelos, configuraciones de entorno y la persistencia de hilos de conversación.
+2.  **Capa de Agentes**: Especialistas en reglas, conjuros, construcción de personajes y búsqueda web que utilizan la lógica **ReAct** (Reasoning + Acting).
+3.  **Capa de Herramientas**: Conectores para RAG local, búsquedas en tiempo real (Tavily y ddg) y procesamiento de fichas PDF.
+4.  **Capa de Datos**: Motores de búsqueda vectorial (ChromaDB) e historial de conversaciones en SQLite.
 
-### 🛠️ Especificaciones Técnicas
-1. Capa Core (Proceso On-Demand)
-El backend es Stateless. Cada petición activa un flujo de trabajo que carga la memoria de la sesión específica, consulta las herramientas necesarias y cierra el proceso al entregar la respuesta, optimizando el uso de recursos y tokens.
+## 📂 Estructura del Proyecto
 
-2. RAG Híbrido (Local + Web)
-El sistema utiliza un sistema de recuperación dual. Si el especialista no encuentra una regla específica en los manuales locales o busca contenido de comunidad, utiliza el agente de búsqueda para consultar Wikidot y DanWiki en tiempo real.
+* [**`src/core/`**](src/core/README.md): Singletons, fábrica de modelos (`factory.py`) y manejo de memoria.
+* [**`src/agents/`**](src/agents/README.md): Definición del Grafo (`graph.py`), router de intenciones y nodos especialistas.
+* [**`src/tools/`**](src/tools/README.md): Herramientas de RAG, conectores web y gestión de fichas PDF.
+* [**`src/database/`**](src/database/README.md): Motor de vectores, ingesta de manuales y persistencia.
+* [**`docker/`**](docker/README.md): Configuración de contenedores y orquestación con Docker Compose.
 
-3. Lógica de Agentes (ReAct)
-Utilizamos el framework ReAct (Reasoning + Acting). Los especialistas no solo responden; primero generan un "Pensamiento" (Thought), deciden una "Acción" (Action), observan el resultado de la herramienta (Observation) y finalmente entregan la "Respuesta Final".
 
-## 🚀 Guía de Inicio para el Desarrollador
-Requisitos
-Python 3.10+
+## 🛠️ Especificaciones Técnicas
+* **Modelos**: Optimizado para **Qwen2-8B** (Razonamiento) y **Qwen2-8B** (Ruteo/Chat rápido) vía Fireworks AI.
+* **Embeddings**: Utiliza `nomic-ai/nomic-embed-text-v1.5` para la búsqueda semántica.
+* **RAG Híbrido**: Si la regla no aparece en los manuales locales, el sistema consulta fuentes externas en tiempo real.
 
-Clave de API de Fireworks.ai
+## 🚀 Guía de Inicio
 
-Clave de API de Tavily (Búsqueda Web)
+### Requisitos Previos
+* Python 3.12+ (para instalación venv).
+* Docker y Docker Compose (para instalación con contenedores).
+* Claves de API de **Fireworks.ai** y **Tavily**.
 
-Instalación y Configuración
-Clonar el repositorio: git clone https://github.com/haiiro1/the-eye-of-lisary-backend.git
+---
 
-Crear un entorno virtual: 
-``` cmd
-python -m venv venv
-```
+### Opción A: Instalación con Virtual Environment (venv)
+Ideal para desarrollo rápido y depuración local.
 
-Instalar dependencias:
-``` cmd
-pip install -r requirements.txt
-```
-Ingesta de datos:
+1.  **Clonar e instalar dependencias**:
+    ```bash
+    git clone [https://github.com/haiiro1/the-eye-of-lisary-backend.git](https://github.com/haiiro1/the-eye-of-lisary-backend.git)
+    cd the-eye-of-lisary-backend
+    python -m venv venv
+    source venv/bin/activate  # Windows: venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+2.  **Configurar Entorno**: Copia `.env.example` a `.env` y rellena tus credenciales.
+3.  **Ingesta de Manuales**: Coloca tus PDFs en `data/manuales/` y ejecuta:
+    ```bash
+    python src/database/ingesta.py
+    ```
+4.  **Ejecutar**: `python src/main.py`.
 
-Coloca tus archivos PDF en data/manuales/.
+---
 
-Ejecuta:
-``` cmd
-python src/database/ingesta.py para construir la base de datos vectorial.
-```
-## 📡 Integración con Frontend (En dearrollo)
-Este backend expone una API REST profesional. Al estar en repositorios separados, se recomienda configurar un cliente HTTP (como Axios o Fetch) en el frontend apuntando al endpoint de consulta.
+### Opción B: Instalación con Docker
+Ideal para entornos productivos y consistencia entre servicios.
 
-``` json
-// Ejemplo de Request
-POST /api/v1/consultar
+1.  **Configurar Entorno**: Asegúrate de que el archivo `.env` en la raíz tenga las claves necesarias.
+2.  **Levantar Servicios**: Desde la raíz del proyecto, ejecuta:
+    ```bash
+    docker-compose up --build -d
+    ```
+3.  **Verificación**: El backend estará disponible en `http://localhost:8000` y el frontend en `http://localhost:8501`.
+
+---
+
+## 📡 Integración API
+```json
+POST /chat
 {
-  "session_id": "mesa_01_user_42",
-  "query": "Como Druida nivel 3, ¿qué subclases de Tasha me recomiendas?"
+  "session_id": "mesa_dnd_01",
+  "message": "¿Qué conjuros de nivel 1 me recomiendas para un bardo?"
 }
-```
