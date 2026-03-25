@@ -1,61 +1,62 @@
 import re
-from src.core.factory import LLMFactory
+import json
+from typing import List
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from src.core.factory import LLMFactory
 from src.core.logging_config import logger
-from typing import Optional, List
+from src.core.callbacks import get_langfuse_client
 
 class DnDRouter:
-    def __init__(self, callbacks: Optional[List] = None):
+    def __init__(self, callbacks=None):
         self.callbacks = callbacks
         self.llm = LLMFactory.get_model(is_reasoning=False, callbacks=self.callbacks)
 
-    def classify_intent(self, user_input: str) -> dict:
-        # Atajo para saludos y mensajes cortos: evita latencia y errores de clasificación
-        saludos = ["hola", "buenas", "hi", "hey", "qué tal", "como estas", "saludos", "buen día", "buenas tardes", "buenas noches", "ola"]
-        if len(user_input.split()) < 4 and any(s in user_input.lower() for s in saludos):
-            logger.info("👋 Saludo detectado: saltando clasificación por IA")
-            return {"intents": ["chat"]}
+    def classify_intent(self, user_input: str) -> List[str]:
+        # 1. Validación de entrada
+        if not user_input or not isinstance(user_input, str):
+            return ["chat"]
 
-        logger.info(f"🔍 Clasificando intención: {user_input[:50]}...")
-
-        prompt = ChatPromptTemplate.from_template("""
-            [SISTEMA: MODO CLASIFICACIÓN ESTRICTO]
-            Analiza la petición de D&D 5e y devuelve una lista de etiquetas.
-
-            ETIQUETAS:
-            - RULES: Mecánicas, combate, dotes.
-            - SPELLS: Hechizos, magia.
-            - BUILDER: Personajes, fichas.
-            - WEB: Lore o datos de internet.
-            - CHAT: Saludos o charla casual.
-
-            REGLA: Responde SOLO con las etiquetas en mayúsculas separadas por comas.
-            Entrada: {input}
-            Respuesta:""")
-
-        chain = prompt | self.llm | StrOutputParser()
+        # Atajo manual para ahorrar tiempo y errores
+        greetings = ["hola", "ola", "buenas", "saludos", "quien eres", "buenos dias"]
+        if any(greet in user_input.lower() for greet in greetings):
+            return ["chat"]
 
         try:
-            raw_response = chain.invoke(
-                {"input": user_input},
-                config={"callbacks": self.callbacks, "run_name": "Router_Intent_Classification"}
-            )
+            # 2. Obtener prompt de Langfuse
+            client = get_langfuse_client()
+            prompt_res = client.get_prompt("dnd-router")
+            
+            # 3. Construir el prompt sin historial (el Router solo necesita la última pregunta)
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", prompt_res.get_langchain_prompt()),
+                ("human", "{input}")
+            ])
 
-            # Se limpia el texto por si el modelo incluye bloques de razonamiento <think>
-            clean_text = re.sub(r'<think>.*?</think>', '', raw_response, flags=re.DOTALL)
-            raw_upper = clean_text.upper().strip()
+            # 4. Cadena de ejecución
+            chain = prompt | self.llm | StrOutputParser()
+            
+            # 5. Invocación pasando solo el string
+            response = chain.invoke({"input": str(user_input)})
+            
+            # 6. Limpieza profunda del texto recibido
+            text_response = re.sub(r'<think>.*?</think>', '', str(response), flags=re.DOTALL).strip()
 
-            # Extracción de etiquetas válidas mediante regex
-            found_tags = re.findall(r'(RULES|SPELLS|BUILDER|WEB|CHAT)', raw_upper)
-            final_intents = list(set([tag.lower() for tag in found_tags]))
-
-            # Si no se detecta ninguna etiqueta, se redirige a chat por defecto
-            if not final_intents:
-                return {"intents": ["chat"]}
-
-            return {"intents": final_intents}
+            # 7. Extracción de JSON con "Fuerza Bruta"
+            match = re.search(r'\[.*\]', text_response)
+            if match:
+                json_str = match.group().replace("'", '"')
+                try:
+                    intents = json.loads(json_str)
+                    if isinstance(intents, list):
+                        # Limpiar que sean strings válidos
+                        return [str(i).strip().lower() for i in intents if i]
+                except:
+                    logger.warning(f"⚠️ Error parseando JSON en Router: {json_str}")
+            
+            return ["chat"]
 
         except Exception as e:
-            logger.error(f"❌ Error en la clasificación del Router: {e}")
-            return {"intents": ["chat"]}
+            # Si esto falla, el log nos dirá la verdad
+            logger.error(f"❌ Error real en Router: {e}")
+            return ["chat"]

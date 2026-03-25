@@ -1,9 +1,13 @@
+import logging
+from typing import List, Union
 from langgraph.graph import StateGraph, END
 from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import BaseMessage
+
 from src.core.state import AgentState
 from src.agents.router import DnDRouter
 
-# Importación de los nodos
+# Importación de los nodos especialistas
 from src.agents.nodes import (
     builder_node,
     chat_node,
@@ -14,65 +18,103 @@ from src.agents.nodes import (
     spell_node,
 )
 
+logger = logging.getLogger("OjoDeLisary")
+
+# --- HELPER DE EXTRACCIÓN SEGURO ---
+def safe_get_content(msg: Union[BaseMessage, dict, tuple]) -> str:
+    """Extrae el contenido de un mensaje sin importar su formato técnico."""
+    if hasattr(msg, 'content'): # Objeto LangChain
+        return str(msg.content)
+    if isinstance(msg, dict):   # Diccionario (Serialización API)
+        return str(msg.get("content", ""))
+    if isinstance(msg, (tuple, list)) and len(msg) >= 2: # Tupla antigua
+        return str(msg[1])
+    return str(msg)
+
 # --- NODOS DE CONTROL ---
+
 def router_node(state: AgentState, config: RunnableConfig):
     """
-    Analiza la entrada e inyecta callbacks.
-    Mantiene la lógica de bloqueo de bucle para múltiples especialistas.
+    Analiza la entrada y decide qué especialistas deben actuar.
     """
-    # Si ya hay agentes en la cola, NO se clasifica, se dejan que fluyan.
+    messages = state.get("messages", [])
+    
+    # 1. Si ya hay agentes en la cola (viniendo de un especialista), no reclasificamos
     if state.get("selected_agents") and len(state["selected_agents"]) > 0:
         return {}
 
-    # Verificamos el último mensaje para evitar re-clasificar respuestas de expertos
-    last_msg = state["messages"][-1]
-    content = last_msg[1] if isinstance(last_msg, tuple) else last_msg.content
+    # 2. Verificamos si el último mensaje es de un experto para evitar bucles
+    if messages:
+        last_msg_content = safe_get_content(messages[-1])
+        expert_tags = ["[RULES_EXPERT]", "[SPELL_MENTOR]", "[CHAR_BUILDER]", "[WEB_EXPERT]", "[CHAT_EXPERT]"]
+        if any(tag in last_msg_content for tag in expert_tags):
+            return {"selected_agents": []}
 
-    # Etiquetas de control para detectar si el flujo ya pasó por un experto
-    expert_tags = ["[RULES_EXPERT]", "[SPELL_MENTOR]", "[CHAR_BUILDER]", "[WEB_EXPERT]", "[CHAT_EXPERT]"]
-
-    if any(tag in str(content) for tag in expert_tags):
-        return {"selected_agents": []}
-
-    # Clasificación inicial para mensajes humanos
-    callbacks = config.get("callbacks", [])
-    router = DnDRouter(callbacks=callbacks)
-    text = get_human_query(state["messages"])
-    result = router.classify_intent(text)
-
-    return {
-        "selected_agents": result["intents"]
-    }
+    # 3. Clasificación inicial usando el Router
+    try:
+        router = DnDRouter(callbacks=config.get("callbacks", []))
+        
+        # Obtenemos la consulta limpia del humano
+        text = get_human_query(messages)
+        
+        # El router devuelve una LISTA de strings, ej: ["spells"]
+        intents = router.classify_intent(text)
+        
+        logger.info(f"🔮 [RouterNode] Intenciones detectadas: {intents}")
+        
+        return {
+        "selected_agents": intents # ASEGÚRATE de no poner result["intents"] si result ya es la lista
+        }
+    except Exception as e:
+        logger.error(f"❌ Error en router_node: {e}")
+        return {"selected_agents": ["chat"]}
 
 def orchestrator(state: AgentState):
-    """Orquestador que decide el siguiente nodo basado en la cola selected_agents."""
+    """
+    Decide el siguiente paso basado en la lista 'selected_agents'.
+    """
     pending = state.get("selected_agents", [])
 
-    if not pending:
+    if not pending or len(pending) == 0:
         return "aggregator"
 
+    # Tomamos el primer agente y lo normalizamos
     next_agent = str(pending[0]).lower().strip()
 
-    # Mapeo de intención a nombre de nodo
-    if next_agent in ["web", "builder", "rules", "spells", "chat"]:
-        return next_agent
+    # Mapeo de intención a nombre de nodo (plural/singular compatible)
+    mapping = {
+        "spells": "spells",
+        "spell": "spells",
+        "rules": "rules",
+        "rule": "rules",
+        "builder": "builder",
+        "char": "builder",
+        "web": "web",
+        "wiki": "web",
+        "chat": "chat"
+    }
 
-    return "aggregator"
+    target = mapping.get(next_agent, "aggregator")
+    logger.info(f"🔀 [Orchestrator] Siguiente destino: {target}")
+    return target
 
-# --- DISEÑO DEL FLUJO ---
+# --- DISEÑO DEL FLUJO (WORKFLOW) ---
+
 workflow = StateGraph(AgentState)
 
-# Registro de Nodos
-workflow.add_node("chat", chat_node)
+# 1. Registro de Nodos
 workflow.add_node("router_node", router_node)
+workflow.add_node("chat", chat_node)
 workflow.add_node("web", web_node)
 workflow.add_node("builder", builder_node)
 workflow.add_node("rules", rules_node)
 workflow.add_node("spells", spell_node)
 workflow.add_node("aggregator", aggregator_node)
 
+# 2. Punto de Entrada
 workflow.set_entry_point("router_node")
 
+# 3. Aristas Condicionales (Lógica de ruteo)
 workflow.add_conditional_edges(
     "router_node",
     orchestrator,
@@ -86,15 +128,18 @@ workflow.add_conditional_edges(
     }
 )
 
-# Si es un saludo, el experto responde y termina el flujo.
+# 4. Aristas Fijas (Retorno al router o fin)
+# El experto de chat suele ser conclusivo
 workflow.add_edge("chat", END)
 
-# Los especialistas técnicos sí vuelven al router por si hay más tareas
+# Los expertos técnicos vuelven al router para ver si hay más tareas en la lista
 workflow.add_edge("web", "router_node")
 workflow.add_edge("builder", "router_node")
 workflow.add_edge("rules", "router_node")
 workflow.add_edge("spells", "router_node")
 
+# El agregador sintetiza todo y cierra el ciclo
 workflow.add_edge("aggregator", END)
 
+# Compilación
 agent_workflow = workflow
