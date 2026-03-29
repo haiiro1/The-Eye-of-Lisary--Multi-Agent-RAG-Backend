@@ -26,7 +26,6 @@ de rastreo en hilos diferentes debido al uso de ainvoke en un entorno asíncrono
 
 
 logging.getLogger("opentelemetry.context").setLevel(logging.CRITICAL)
-# Variable global para el grafo compilado
 app_graph = None
 fichas_personajes = {}
 
@@ -34,7 +33,6 @@ fichas_personajes = {}
 async def lifespan(app: FastAPI):
     global app_graph
     checkpointer_cm = get_graph_checkpointer()
-    # Mantenemos el contexto abierto durante TODA la ejecución
     async with checkpointer_cm as saver:
         app_graph = agent_workflow.compile(checkpointer=saver)
         logger.info("✅ El Ojo de Lisary ha despertado.")
@@ -98,7 +96,7 @@ async def chat(request: ChatRequest):
     try:
         handler = get_langfuse_callback(session_id=request.session_id)
         initial_state = {
-            "messages": [HumanMessage(content=request.message)], # <--- CAMBIA LA TUPLA POR ESTO
+            "messages": [HumanMessage(content=request.message)],
             "sheet_context": fichas_personajes.get(request.session_id, ""),
             "language": "es",
             "selected_agents": []

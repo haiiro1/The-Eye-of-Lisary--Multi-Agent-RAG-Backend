@@ -53,17 +53,16 @@ def router_node(state: AgentState, config: RunnableConfig):
     # 3. Clasificación inicial usando el Router
     try:
         router = DnDRouter(callbacks=config.get("callbacks", []))
-        
-        # Obtenemos la consulta limpia del humano
+
         text = get_human_query(messages)
-        
+
         # El router devuelve una LISTA de strings, ej: ["spells"]
         intents = router.classify_intent(text)
-        
+
         logger.info(f"🔮 [RouterNode] Intenciones detectadas: {intents}")
-        
+
         return {
-        "selected_agents": intents # ASEGÚRATE de no poner result["intents"] si result ya es la lista
+        "selected_agents": intents
         }
     except Exception as e:
         logger.error(f"❌ Error en router_node: {e}")
